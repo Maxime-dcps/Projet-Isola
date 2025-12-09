@@ -25,7 +25,7 @@ typedef struct {
 //FUNCTIONS
 void init_board(Game *game);
 void move_player(char board[ROW][COLUMN], Player * player, int destRow, int destColumn);
-int is_in_reach(Player player, int row, int col);
+int is_in_reach(Player * player, int row, int col);
 int is_in_board(int row, int col);
 void set_player_pos(Player *player, int row, int column);
 void get_player_pos(char board[ROW][COLUMN], char player, int *row, int *column);
@@ -100,7 +100,7 @@ void init_board(Game *game) {
 
 void move_player(char board[ROW][COLUMN], Player * player, int destRow, int destColumn)
 {
-    if (is_in_board(destRow, destColumn) && is_in_reach(*player, destRow, destColumn) && board[destRow][destColumn] == '0')//->REFACTOR must be player turn
+    if (is_in_board(destRow, destColumn) && is_in_reach(player, destRow, destColumn) && board[destRow][destColumn] == '0')//->REFACTOR must be player turn
     {
         board[player->row][player->col] = '0';
         board[destRow][destColumn] = player->symbol;
@@ -113,7 +113,7 @@ void move_player(char board[ROW][COLUMN], Player * player, int destRow, int dest
     #ifdef DEBUG
     else {
         if (!is_in_board(destRow, destColumn)) printf("Destination is not in board \n");
-        else if (!is_in_reach(*player, destRow, destColumn)) printf("Destination is not in reach\n");
+        else if (!is_in_reach(player, destRow, destColumn)) printf("Destination is not in reach\n");
         else if (board[destRow][destColumn] != '0') printf("Destination is not isn't available\n");
     }
     #endif
@@ -121,10 +121,10 @@ void move_player(char board[ROW][COLUMN], Player * player, int destRow, int dest
 }
 
 //Can player move to this position
-int is_in_reach(Player player, int row, int col)
+int is_in_reach(Player * player, int row, int col)
 {
-    int dx = player.row - row;
-    int dy = player.col - col;
+    int dx = player->row - row;
+    int dy = player->col - col;
     return (dx*dx + dy*dy) < 4;
 }
 

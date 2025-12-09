@@ -5,4 +5,9 @@ set(CMAKE_C_STANDARD 11)
 
 add_executable(ProjetReseaux main.c
         display.c
-        display.h)
+        display.h
+        include/config.h
+        include/config.h
+        include/server.h
+        include/server.h
+        include/protocol.h)
