@@ -52,13 +52,100 @@ sqlite3* init_database(void) {
 }
 
 int get_user(sqlite3 *db, const char *username, User *user) {
-    //TODO: Implement GET
-    return 1;
+    sqlite3_stmt *stmt; //Create a new statement
+
+    const char *sql_select =
+        "SELECT password_hash, wins, losses, forfeits FROM users WHERE username = ?;";
+
+    //Prepare the statement
+    if (sqlite3_prepare_v2(db, sql_select, -1, &stmt, 0) != SQLITE_OK) {
+        printf("SQLITE ERROR: failed to prepare SELECT statement : %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    //Bind the parameter to avoid SQL injection
+    if (sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC) != SQLITE_OK) {
+        printf("SQLITE ERROR: failed to bind username for SELECT : %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt); //Clean the statement
+        return -1;
+    }
+
+    //Execute the query and check results
+    int status = sqlite3_step(stmt);
+
+    if (status == SQLITE_ROW) {
+        //User found
+
+        //Col 0: password_hash (BLOB)
+        const uint8_t *hash_ptr = sqlite3_column_blob(stmt, 0);
+        int hash_len = sqlite3_column_bytes(stmt, 0);
+
+        //Ensure hash length matches expected length
+        if (hash_len != AUTH_HASH_LEN) {
+            fprintf(stderr, "SECURITY WARNING: Hash length mismatch for user %s\n", username);
+            sqlite3_finalize(stmt);
+            return -1; //Error
+        }
+
+        //Copy data to the User structure
+        strncpy(user->username, username, MAX_USERNAME_LEN); //Copying the value not the pointer
+        memcpy(user->password_hash, hash_ptr, AUTH_HASH_LEN);
+        user->wins = (uint16_t)sqlite3_column_int(stmt, 1);
+        user->losses = (uint16_t)sqlite3_column_int(stmt, 2);
+        user->forfeits = (uint16_t)sqlite3_column_int(stmt, 3);
+
+        sqlite3_finalize(stmt);
+        return 0; //User found
+
+    } else if (status == SQLITE_DONE) {
+        //No row returned
+        sqlite3_finalize(stmt);
+        return 1; //User not found
+
+    } else {
+        //General error
+        printf("SQLITE ERROR: execution error during SELECT : %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return -1; //Error
+    }
 }
 
 int create_user(sqlite3 *db, const char *username, const uint8_t *auth_hash) {
-    //TODO: Implement INSERT
-    return -1;
+    sqlite3_stmt *stmt;
+    //Insert a new user
+    const char *sql_insert = "INSERT INTO users (username, password_hash) VALUES (?, ?);";
+
+    //Prepare the statement
+    if (sqlite3_prepare_v2(db, sql_insert, -1, &stmt, 0) != SQLITE_OK) {
+        printf("SQLITE ERROR: failed to prepare INSERT statement : %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    //Bind parameter 1
+    if (sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC) != SQLITE_OK) {
+        printf("SQLITE ERROR: failed to bind username for INSERT : %s\n", sqlite3_errmsg(db));
+
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+    //Bind parameter 2
+    if (sqlite3_bind_blob(stmt, 2, auth_hash, AUTH_HASH_LEN, SQLITE_STATIC) != SQLITE_OK) {
+        printf("SQLITE ERROR: failed to bind hash for INSERT : %s\n", sqlite3_errmsg(db));
+
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    //Execute the query
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        printf("SQLITE ERROR: execution error during INSERT : %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    //Cleanup
+    sqlite3_finalize(stmt);
+    return 0; //User created
 }
 
 int update_user_stats(sqlite3 *db, const char *username, int win_increment, int loss_increment, int forfeit_increment) {
