@@ -1,7 +1,5 @@
 #include <stdio.h>
 
-#include "display.h"
-
 //Activ debug mod
 #define DEBUG 0
 

@@ -8,8 +8,8 @@
 #include <sys/select.h>
 #include <errno.h>
 
-#include "./include/network_core.h"
-#include "./include/protocol.h"
+#include "../include/network_core.h"
+#include "../include/protocol.h"
 
 //Global variables
 Client *client_list_head = NULL;
