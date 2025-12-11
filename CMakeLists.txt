@@ -10,4 +10,7 @@ add_executable(ProjetReseaux main.c
         include/config.h
         include/server.h
         include/server.h
-        include/protocol.h)
+        include/protocol.h
+        include/network_core.h
+        network_core.c
+        network_core.c)

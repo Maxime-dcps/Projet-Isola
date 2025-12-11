@@ -4,6 +4,8 @@
 
 #ifndef PROJETRESEAUX_SERVER_H
 #define PROJETRESEAUX_SERVER_H
+#include <stdint.h>
+#include "config.h"
 
     //FSM states
     typedef enum {
@@ -15,7 +17,7 @@
     } ClientState;
 
     //Struct containing the session info
-    typedef struct {
+    typedef struct Client{
         struct Client *next;            //Pointer to the next client in the list
 
         int socket_fd;                  //Socket's file descriptor
@@ -27,5 +29,5 @@
 
     } Client;
 
-
+    extern Client *client_list_head; //Head of global client list
 #endif

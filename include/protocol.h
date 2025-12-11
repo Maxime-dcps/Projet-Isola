@@ -8,7 +8,7 @@
     typedef struct {
         uint8_t  command_id;
         uint8_t  reserved;
-        uint16_t length;
+        uint16_t length; //Length of the packet's body
     } Header;
 
     //Client -> server
