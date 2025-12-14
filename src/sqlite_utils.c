@@ -6,13 +6,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../include/sqlite_utils.h"
-#include "../include/config.h"
+#include "sqlite_utils.h"
+#include "config.h"
 
 //Variable for the database connection
-static sqlite3 *db_conn = NULL;
+sqlite3 *db_conn = NULL;
 
-sqlite3* init_database(void) {
+sqlite3* init_database() {
     if (db_conn != NULL) {
         //Database already initialized
         return db_conn;

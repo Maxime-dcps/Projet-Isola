@@ -3,14 +3,13 @@ project(ProjetReseaux C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(ProjetReseaux main.c
-        include/config.h
-        include/server.h
-        include/protocol.h
-        include/network_core.h
+add_executable(ProjetReseaux
+        src/main.c
         src/network_core.c
-        include/sqlite_utils.h
-        src/sqlite_utils.c)
+        src/sqlite_utils.c
+        src/auth.c)
+
+target_include_directories(ProjetReseaux PRIVATE include)
 
 find_package(SQLite3 REQUIRED)
 

@@ -17,9 +17,10 @@
         uint16_t forfeits;
     } User;
 
+    extern sqlite3 *db_conn;
 
     //Initializes the DB connection and creates the 'users' table if it does not exist yet
-    sqlite3* init_database(void);
+    sqlite3* init_database();
 
     //Return user profile by username (-1 = error, 0 = user not found, 1 = user found)
     int get_user(sqlite3 *db, const char *username, User *user);

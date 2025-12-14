@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "sqlite_utils.h"
 
 //Activ debug mod
 #define DEBUG 0
@@ -33,6 +34,8 @@ int get_game_result(Game game);
 int can_move(char board[ROW][COLUMN], Player player);
 
 int main(void) {
+
+    db_conn = init_database();
 
     int gameResult = 0;
     /*

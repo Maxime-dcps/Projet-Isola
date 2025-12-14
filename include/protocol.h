@@ -37,6 +37,14 @@
         uint8_t turn_player_id;         //Flag to know if it's your turn
     } SGameState;
 
+    //S_AUTH_RESPONSE
+    typedef struct SAuthResponse{
+        uint8_t status;
+        uint16_t wins;
+        uint16_t losses;
+        uint16_t forfeits;
+    } SAuthResponse;
+
     //More to come
 
 #endif

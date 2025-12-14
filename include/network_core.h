@@ -6,8 +6,20 @@
 #define PROJETRESEAUX_NETWORK_CORE_H
 
 #include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/select.h>
+#include <errno.h>
+
 #include "server.h"
 #include "config.h"
+#include "protocol.h"
+#include "auth.h"
 
     extern Client *client_list_head;
     extern int server_socket;       // Listener socket
@@ -32,5 +44,10 @@
     //Sends a binary packet to a specific client.
     ssize_t send_packet(Client *client, CommandID command_id, const void *data_body, uint16_t body_len);
 
-    //TODO: void handle_client_activity(Client *current_client);
+    //Fine states machine logic
+    void fsm_process_packet(Client *client, CommandID command_id, const uint8_t *packet_body, uint16_t body_len);
+
+    //Checks that body size match the expectation
+    int validate_body_size(CommandID command_id, uint16_t body_len);
+
 #endif

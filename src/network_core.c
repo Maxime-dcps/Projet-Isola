@@ -1,15 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/select.h>
-#include <errno.h>
-
-#include "../include/network_core.h"
-#include "../include/protocol.h"
+#include "network_core.h"
 
 //Global variables
 Client *client_list_head = NULL;
@@ -216,7 +205,7 @@ int process_client_data(Client *client) {
         //If the full packet is available, process it
         printf("DEBUG: Received complete packet. ID: %d, Length: %d\n", header->command_id, required_len);
 
-        //TODO: fsm_process_packet(client, header->command_id, client->recv_buffer + HEADER_SIZE);
+        fsm_process_packet(client, header->command_id, client->recv_buffer + HEADER_SIZE, required_len);
 
         //Shift the remaining data in the buffer to avoid deleting the next packet
         memmove(client->recv_buffer,
@@ -257,4 +246,77 @@ ssize_t send_packet(Client *client, CommandID command_id, const void *data_body,
 
     free(packet_buffer);
     return bytes_sent; //Number of bytes successfuly sent
+}
+
+void fsm_process_packet(Client *client, CommandID command_id, const uint8_t *packet_body, uint16_t body_len) {
+    // Check command validity based on the client's current state (FSM)
+
+    if (!validate_body_size(command_id, body_len)) {
+        printf("SECURITY ALERT: Invalid body size (%u) for command_id (%d) from FD: %d. Expected: %zu\n", body_len, command_id, client->socket_fd, sizeof(CAuthChallenge));
+        client->state = DISCONNECTED;
+    }
+
+    switch (client->state) {
+        case CONNECTED:
+            if (command_id == C_AUTH_CHALLENGE) {
+                // The client is connected and attempts to authenticate
+
+                CAuthChallenge challenge;
+                memcpy(&challenge, packet_body, sizeof(CAuthChallenge));
+
+                handle_auth_challenge(client, &challenge);
+            } else {
+                // Invalid command for this state: disconnect the client
+                printf("FSM WARNING: Client %d sent invalid command %d in state CONNECTED\n", client->socket_fd, command_id);
+                client->state = DISCONNECTED; // Flag for immediate removal by main loop
+            }
+            break;
+
+        case AUTHENTICATED:
+            // Client is in the lobby, expecting C_PLAY_REQUEST or C_DISCONNECT
+            if (command_id == C_PLAY_REQUEST) {
+                // TODO: Implement matchmaking logic
+                printf("FSM INFO: User %s requesting match.\n", client->username);
+            } else if (command_id == C_DISCONNECT) {
+                client->state = DISCONNECTED;
+            } else {
+                printf("FSM WARNING: User %s sent invalid command %d in state AUTHENTICATED\n", client->username, command_id);
+            }
+            break;
+
+        case IN_QUEUE:
+            //TODO : Implement IN_QUEUE logic
+            break;
+
+        case IN_GAME:
+            //TODO : Implement IN_GAME logic
+            break;
+
+        case DISCONNECTED:
+            //Ignore, this client will be removed on the next iteration
+            printf("FSM WARNING: User %s try to send command %d in state DISCONNECTED\n", client->username, command_id);
+            break;
+
+        default:
+            printf("FSM WARNING: User %s try to send command %d in unattended state\n", client->username, command_id);
+            break;
+    }
+}
+
+int validate_body_size(CommandID command_id, uint16_t body_len) {
+    int expected_len;
+    switch (command_id) {
+        case C_AUTH_CHALLENGE:
+            expected_len = sizeof(CAuthChallenge);
+            break;
+        case C_MOVE_PAWN:
+            expected_len = sizeof(CMovePawn);
+            break;
+        case C_BLOCK_TILE:
+            expected_len = sizeof(CBlockTile);
+            break;
+        default:
+            return -1;
+    }
+    return (body_len == expected_len);
 }
