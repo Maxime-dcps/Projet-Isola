@@ -1,6 +1,7 @@
 import socket
 import struct
 import errno
+import hashlib
 from protocol_constants import *
 
 
@@ -71,3 +72,15 @@ class NetworkClient:
                 self.recv_buffer = self.recv_buffer[total_packet_size:] # Shift the remaining data in the buffer to avoid deleting the next packet
 
         return packets
+
+    def send_auth_challenge(self, username, password):
+        # Sends C_AUTH_CHALLENGE
+        username_bytes = username.encode('utf-8')[:MAX_USERNAME_LEN] # Might change for ascii
+
+        username_padded = username_bytes.ljust(MAX_USERNAME_LEN, b'\x00') # Adds bits to match the size
+
+        password_hash = hashlib.sha256(password.encode('utf-8')).digest() # Hash the password
+
+        body = struct.pack(f'{MAX_USERNAME_LEN}s 32s', username_padded, password_hash)
+
+        return self.send_packet(C_AUTH_CHALLENGE, body)
