@@ -1,8 +1,10 @@
 #include <stdio.h>
+
+#include "network_core.h"
 #include "sqlite_utils.h"
 
 //Activ debug mod
-#define DEBUG 0
+//#define DEBUG 0
 
 #define ROW 6
 #define COLUMN 8
@@ -37,31 +39,43 @@ int main(void) {
 
     db_conn = init_database();
 
-    int gameResult = 0;
-    /*
-     * gameResult status codes:
-     *   0 = Game is still in progress
-     *   1 = Game over → Player 1 has won
-     *   2 = Game over → Player 2 has won
-     */
+    if (db_conn == NULL) {
+        printf("FATAL ERROR: Failed to initialize database connection.\n");
+        return -1;
+    }
 
-    Game game;
+    //Main loop, whiler server running
+    if (start_server_loop() < 0) {
+        printf("FATAL ERROR: Server loop failed to start or crashed.\n");
+    }
 
-    game.p1.symbol = 'A';
-    game.p2.symbol = 'B';
-    game.current = 1;
-
-    init_board(&game);
-
-    // while (gameResult == 0 || sudden_disconnection)
-    // {
-    //     move();
-    //     delete();
-    //     game.current = game.current == 1 ? 1 : 2;
-    //     gameResult = get_game_result(game);
-    // }
+    //Cleanup
+    sqlite3_close(db_conn);
 
     #ifdef DEBUG
+        int gameResult = 0;
+        /*
+         * gameResult status codes:
+         *   0 = Game is still in progress
+         *   1 = Game over → Player 1 has won
+         *   2 = Game over → Player 2 has won
+         */
+
+        Game game;
+
+        game.p1.symbol = 'A';
+        game.p2.symbol = 'B';
+        game.current = 1;
+
+        init_board(&game);
+
+        // while (gameResult == 0 || sudden_disconnection)
+        // {
+        //     move();
+        //     delete();
+        //     game.current = game.current == 1 ? 1 : 2;
+        //     gameResult = get_game_result(game);
+        // }
         display_board(game.board);
         move_player(game.board, &game.p1, 2, 1);
         display_board(game.board);
