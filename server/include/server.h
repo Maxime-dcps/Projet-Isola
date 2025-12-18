@@ -6,8 +6,9 @@
 #define PROJETRESEAUX_SERVER_H
 #include <stdint.h>
 #include "config.h"
+#include "game.h"
 
-    //FSM states
+//FSM states
     typedef enum {
         CONNECTED,
         AUTHENTICATED,
@@ -27,6 +28,7 @@
         uint8_t recv_buffer[512];       //Buffer before parsing
         int recv_len;
 
+        Game *current_game;
     } Client;
 
     extern Client *client_list_head; //Head of global client list

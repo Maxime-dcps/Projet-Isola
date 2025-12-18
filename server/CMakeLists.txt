@@ -8,7 +8,8 @@ add_executable(ProjetReseaux
         src/network_core.c
         src/sqlite_utils.c
         src/auth.c
-        src/matchmaking.c)
+        src/matchmaking.c
+        src/game.c)
 
 target_include_directories(ProjetReseaux PRIVATE include)
 

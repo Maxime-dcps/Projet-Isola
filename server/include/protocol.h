@@ -33,8 +33,14 @@
 
     //S_GAME_STATE
     typedef struct {
-        uint8_t board[BOARD_DATA_SIZE];
-        uint8_t turn_player_id;         //Flag to know if it's your turn
+        uint8_t board[ROW][COLUMN];
+        /*Each tile has 4 states possible (ok, player 1, player 2, destroyed)
+         * 0 -> free
+         * 1 -> player 1
+         * 2 -> player 3
+         * 3 -> destroyed
+         */
+        uint8_t turn_player_id;         //Flag to know if it's your turn (1 -> your turn)
     } SGameState;
 
     //S_AUTH_RESPONSE

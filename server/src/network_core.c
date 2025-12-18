@@ -291,7 +291,19 @@ void fsm_process_packet(Client *client, CommandID command_id, const uint8_t *pac
             break;
 
         case IN_GAME:
-            //TODO : Implement IN_GAME logic
+            if (command_id == C_MOVE_PAWN) {
+                //The client is trying to move
+
+                //TODO: handle_move_request(client, packet_body);
+            }
+            else if (command_id == C_BLOCK_TILE) {
+                //TODO: implement handle_block_request()
+            }
+            else {
+                // Invalid command for this state: disconnect the client
+                printf("FSM WARNING: Client %d sent invalid command %d in state IN_GAME\n", client->socket_fd, command_id);
+                client->state = DISCONNECTED; // Flag for immediate removal by main loop
+            }
             break;
 
         case DISCONNECTED:
