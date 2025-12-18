@@ -277,7 +277,7 @@ void fsm_process_packet(Client *client, CommandID command_id, const uint8_t *pac
         case AUTHENTICATED:
             // Client is in the lobby, expecting C_PLAY_REQUEST or C_DISCONNECT
             if (command_id == C_PLAY_REQUEST) {
-                // TODO: Implement matchmaking logic
+                handle_play_request(client);
                 printf("FSM INFO: User %s requesting match.\n", client->username);
             } else if (command_id == C_DISCONNECT) {
                 client->state = DISCONNECTED;

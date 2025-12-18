@@ -72,6 +72,41 @@ class IsolaClientApp:
             text="Status: Initializing...", manager=MANAGER, container=self.login_panel
         )
 
+    def init_lobby_ui(self):
+        self.lobby_panel = pygame_gui.elements.UIPanel(
+            relative_rect=pygame.Rect((WIDTH // 4, HEIGHT // 4), (400, 300)),
+            manager=MANAGER,
+            visible=0
+        )
+
+        # Welcome message
+        self.welcome_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 10), (350, 40)),
+            text=f"Welcome, {self.username} !",
+            manager=MANAGER, container=self.lobby_panel
+        )
+
+        # Simple data label
+        self.stats_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 50), (350, 40)),
+            text="Stats: Loading...",
+            manager=MANAGER, container=self.lobby_panel
+        )
+
+        # Play Button
+        self.play_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((100, 110), (200, 50)),
+            text="FIND MATCH",
+            manager=MANAGER, container=self.lobby_panel
+        )
+
+        # Lobby Status
+        self.lobby_status = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 180), (350, 40)),
+            text="Status: Ready to play",
+            manager=MANAGER, container=self.lobby_panel
+        )
+
     def handle_login_button(self, event):
         if event.ui_element == self.login_button:
             username = self.username_input.get_text()
@@ -102,22 +137,33 @@ class IsolaClientApp:
                 if status == S_STATUS_SUCCESS or status == S_STATUS_CREATED:
                     wins, losses, forfeits = struct.unpack(">HHH", body[2:]) # Avoiding the padding (might be a bug)
 
-                    if status == S_STATUS_CREATED:
-                        msg = f"Account CREATED! Stats: W:{wins}, L:{losses}"
-                    else:
-                        msg = f"Login SUCCESS! Stats: W:{wins}, L:{losses}"
-
-                    self.status_message.set_text(f"Status: {msg}")
                     self.state = 'AUTHENTICATED'
 
-                    # TODO: Send to lobby
-                    print(f"INFO: Client authenticated as {self.username}. Ready for Matchmaking.")
+                    # UI Transition
+                    self.login_panel.hide()
+                    self.init_lobby_ui()
+                    self.lobby_panel.show()
+
+                    # Update Labels with actual data
+                    self.welcome_label.set_text(f"Welcome, {self.username}!")
+                    self.stats_label.set_text(f"Wins: {wins} | Losses: {losses} | Forfeits: {forfeits}")
+
+                    if status == S_STATUS_CREATED:
+                        self.lobby_status.set_text("Status: Account created successfully!")
+                    else:
+                        self.lobby_status.set_text("Status: Logged in.")
 
                 elif status == S_STATUS_FAIL:
                     self.status_message.set_text("Status: Authentication FAILED. Try again.")
                     self.state = 'CONNECTED'  # Allows retry
+            elif command_id == S_WAITING_OPPONENT:
+                self.lobby_status.set_text("Status: Searching for opponent...")
+                self.play_button.disable()
 
-            # TODO: S_WAITING_OPPONENT, S_MATCH_FOUND, etc.
+            elif command_id == S_MATCH_FOUND:
+                self.lobby_status.set_text("Status: Match Found! Starting...")
+                # TODO: Send to Game Scene
+                print("DEBUG: Matchmaking successful, preparing board.")
 
     def run(self):
         # Start the connection attempt
@@ -132,9 +178,11 @@ class IsolaClientApp:
                 if event.type == pygame.QUIT:
                     self.running = False
 
-                if event.type == pygame.USEREVENT:
-                    if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == self.login_button:
                         self.handle_login_button(event)
+                    elif hasattr(self, 'play_button') and event.ui_element == self.play_button:
+                        self.network.send_packet(C_PLAY_REQUEST)
 
                 MANAGER.process_events(event)
 
