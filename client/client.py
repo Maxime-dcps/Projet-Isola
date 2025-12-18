@@ -162,8 +162,15 @@ class IsolaClientApp:
 
             elif command_id == S_MATCH_FOUND:
                 self.lobby_status.set_text("Status: Match Found! Starting...")
-                # TODO: Send to Game Scene
+                # TODO: Init to Game Scene
                 print("DEBUG: Matchmaking successful, preparing board.")
+
+            elif command_id == S_GAME_STATE:
+                # 48B Board + 1B Turn flag = 49 bytes
+                board_data = body[:48]
+                my_turn = body[48]
+
+                self.init_game_ui(board_data, my_turn)
 
     def run(self):
         # Start the connection attempt
