@@ -20,6 +20,7 @@
 #include "config.h"
 #include "protocol.h"
 #include "auth.h"
+#include "matchmaking.h"
 
     extern Client *client_list_head;
     extern int server_socket;       // Listener socket

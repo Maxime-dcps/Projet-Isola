@@ -31,6 +31,8 @@ void start_session(int socket_fd) {
 void end_session(Client *client_to_remove) {
     if (client_to_remove == NULL) return;
 
+    if (client_to_remove == waiting_client) waiting_client = NULL;
+
     //Find the client in the list to unlink it
     Client **ptr = &client_list_head;
     while (*ptr != NULL && *ptr != client_to_remove) {
