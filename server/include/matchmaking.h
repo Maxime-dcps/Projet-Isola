@@ -4,8 +4,10 @@
 
 #ifndef PROJETRESEAUX_MATCHMAKING_H
 #define PROJETRESEAUX_MATCHMAKING_H
-    #include "network_core.h"
-    #include "game.h"
+
+// Forward declarations to avoid circular dependencies
+typedef struct Client Client;
+typedef struct Game Game;
 
     extern Client *waiting_client;
     //Handle C_PLAY_REQUEST

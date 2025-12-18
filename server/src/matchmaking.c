@@ -2,6 +2,9 @@
 // Created by Max on 18/12/2025.
 //
 #include "matchmaking.h"
+#include "server.h"
+#include "game.h"
+#include "network_core.h"
 
 //Simple pointer to the waiting player
 Client *waiting_client = NULL;
@@ -65,6 +68,6 @@ void update_game_state(Client *c1, Client *c2, Game *game) {
     // Prepare packet for Player 2
     SGameState state2;
     memcpy(state2.board, game->board, BOARD_DATA_SIZE);
-    state2.turn_player_id = (game->current_turn == 1); //If your turn = 1
+    state2.turn_player_id = (game->current_turn == 2); //If your turn = 1
     send_packet(c2, S_GAME_STATE, &state2, sizeof(SGameState));
 }

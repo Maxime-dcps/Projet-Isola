@@ -4,8 +4,6 @@
 Client *client_list_head = NULL;
 int server_socket = -1;
 
-//TODO: void handle_client_activity(Client *current_client);
-
 void start_session(int socket_fd) {
     //Allocate memory for the new client node
     Client *new_client = (Client *)malloc(sizeof(Client));
@@ -293,11 +291,10 @@ void fsm_process_packet(Client *client, CommandID command_id, const uint8_t *pac
         case IN_GAME:
             if (command_id == C_MOVE_PAWN) {
                 //The client is trying to move
-
-                //TODO: handle_move_request(client, packet_body);
+                handle_move_request(client, packet_body);
             }
             else if (command_id == C_BLOCK_TILE) {
-                //TODO: implement handle_block_request()
+                handle_block_request(client, packet_body);
             }
             else {
                 // Invalid command for this state: disconnect the client

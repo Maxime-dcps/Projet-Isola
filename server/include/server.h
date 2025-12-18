@@ -6,7 +6,9 @@
 #define PROJETRESEAUX_SERVER_H
 #include <stdint.h>
 #include "config.h"
-#include "game.h"
+
+// Forward declaration to avoid circular dependency
+typedef struct Game Game;
 
 //FSM states
     typedef enum {

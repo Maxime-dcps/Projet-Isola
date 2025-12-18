@@ -5,6 +5,8 @@
 #ifndef PROJETRESEAUX_PROTOCOL_H
 #define PROJETRESEAUX_PROTOCOL_H
 
+#include "game.h"
+
     typedef struct {
         uint8_t  command_id;
         uint8_t  reserved;

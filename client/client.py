@@ -227,6 +227,12 @@ class IsolaClientApp:
         pygame.quit()
         sys.exit()
 
+    def send_move(self, row, col):
+        encoded_val = (row << 5) | (col << 2)
+
+        # Pack into 1 byte (uint8_t)
+        body = struct.pack("B", encoded_val)
+        self.network.send_packet(C_MOVE_PAWN, body)
 
 if __name__ == '__main__':
     # Application startup
