@@ -1,4 +1,6 @@
 #include "network_core.h"
+#include "game.h"
+#include "sqlite_utils.h"
 
 //Global variables
 Client *client_list_head = NULL;
@@ -29,6 +31,11 @@ void start_session(int socket_fd) {
 void end_session(Client *client_to_remove) {
     if (client_to_remove == NULL) return;
 
+    // Handle forfeit if client was in a game
+    if (client_to_remove->state == IN_GAME && client_to_remove->current_game != NULL) {
+        handle_forfeit(client_to_remove);
+    }
+
     if (client_to_remove == waiting_client) waiting_client = NULL;
 
     //Find the client in the list to unlink it
@@ -47,8 +54,6 @@ void end_session(Client *client_to_remove) {
     //Close the socket and free memory
     close(client_to_remove->socket_fd);
     free(client_to_remove);
-
-    //TODO: Handle give up and SQLite updates if state was IN_GAME
 }
 
 Client* find_client_by_fd(int fd) {
@@ -277,6 +282,10 @@ void fsm_process_packet(Client *client, CommandID command_id, const uint8_t *pac
             if (command_id == C_PLAY_REQUEST) {
                 handle_play_request(client);
                 printf("FSM INFO: User %s requesting match.\n", client->username);
+            } else if (command_id == C_GET_PLAYER_LIST) {
+                handle_player_list_request(client);
+            } else if (command_id == C_CHANGE_PASSWORD) {
+                handle_change_password(client, packet_body);
             } else if (command_id == C_DISCONNECT) {
                 client->state = DISCONNECTED;
             } else {
@@ -326,8 +335,108 @@ int validate_body_size(CommandID command_id, uint16_t body_len) {
         case C_BLOCK_TILE:
             expected_len = sizeof(CBlockTile);
             break;
+        case C_CHANGE_PASSWORD:
+            expected_len = sizeof(CChangePassword);
+            break;
+        case C_GET_PLAYER_LIST:
+        case C_PLAY_REQUEST:
+        case C_DISCONNECT:
+            expected_len = 0;  // No body for these commands
+            break;
         default:
             return -1;
     }
     return (body_len == expected_len);
+}
+
+int is_user_online(const char *username) {
+    Client *current = client_list_head;
+    while (current != NULL) {
+        if (current->state != DISCONNECTED && 
+            strncmp(current->username, username, MAX_USERNAME_LEN) == 0) {
+            return 1;
+        }
+        current = current->next;
+    }
+    return 0;
+}
+
+void handle_player_list_request(Client *client) {
+    User users[MAX_PLAYERS_IN_LIST];
+    int user_count = get_all_users(db_conn, users, MAX_PLAYERS_IN_LIST);
+    
+    if (user_count < 0) {
+        printf("ERROR: Failed to get player list\n");
+        return;
+    }
+
+    // Create array of PlayerEntry
+    PlayerEntry *entries = (PlayerEntry *)malloc(sizeof(PlayerEntry) * user_count);
+    if (!entries) {
+        printf("ERROR: Failed to allocate memory for player list\n");
+        return;
+    }
+
+    // First pass: separate online and offline, keeping order by wins
+    int online_count = 0;
+    int offline_count = 0;
+    PlayerEntry *online_entries = (PlayerEntry *)malloc(sizeof(PlayerEntry) * user_count);
+    PlayerEntry *offline_entries = (PlayerEntry *)malloc(sizeof(PlayerEntry) * user_count);
+
+    for (int i = 0; i < user_count; i++) {
+        PlayerEntry entry;
+        memset(&entry, 0, sizeof(PlayerEntry));
+        strncpy(entry.username, users[i].username, MAX_USERNAME_LEN);
+        entry.wins = htons(users[i].wins);
+        entry.losses = htons(users[i].losses);
+        entry.forfeits = htons(users[i].forfeits);
+        entry.is_online = is_user_online(users[i].username);
+        entry.padding = 0;
+
+        if (entry.is_online) {
+            online_entries[online_count++] = entry;
+        } else {
+            offline_entries[offline_count++] = entry;
+        }
+    }
+
+    // Combine: online first, then offline
+    int idx = 0;
+    for (int i = 0; i < online_count; i++) {
+        entries[idx++] = online_entries[i];
+    }
+    for (int i = 0; i < offline_count; i++) {
+        entries[idx++] = offline_entries[i];
+    }
+
+    free(online_entries);
+    free(offline_entries);
+
+    // Send the list
+    uint16_t body_size = sizeof(PlayerEntry) * user_count;
+    send_packet(client, S_PLAYER_LIST, entries, body_size);
+
+    printf("INFO: Sent player list to %s (%d players)\n", client->username, user_count);
+
+    free(entries);
+}
+
+void handle_change_password(Client *client, const uint8_t *packet_body) {
+    const CChangePassword *req = (const CChangePassword *)packet_body;
+    SChangePasswordResponse response;
+    
+    int result = change_user_password(db_conn, client->username, req->old_password_hash, req->new_password_hash);
+    
+    if (result == 0) {
+        response.status = PASSWORD_CHANGE_SUCCESS;
+        printf("AUTH: Password changed for user %s\n", client->username);
+    } else if (result == 1) {
+        response.status = PASSWORD_CHANGE_WRONG_OLD;
+        printf("AUTH: Wrong old password for user %s\n", client->username);
+    } else {
+        response.status = PASSWORD_CHANGE_ERROR;
+        printf("AUTH: Error changing password for user %s\n", client->username);
+    }
+    
+    send_packet(client, S_CHANGE_PASSWORD_RESPONSE, &response, sizeof(SChangePasswordResponse));
 }

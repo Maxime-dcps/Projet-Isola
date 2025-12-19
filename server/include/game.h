@@ -37,7 +37,7 @@ typedef struct Game {
     PlayerPos pos1;
     PlayerPos pos2;
     int current_turn; //1 or 2
-    GamePhase phase;  // Added to track Move vs Block
+    GamePhase phase;  //Added to track Move vs Block
     struct Game *next; //Pointer to the next game
 } Game;
 
@@ -48,5 +48,10 @@ Game* create_game(Client *p1, Client *p2);
 void remove_game(Game *game);
 void handle_move_request(Client *client, const uint8_t *body);
 void handle_block_request(Client *client, const uint8_t *body);
+
+// End game management
+int check_player_blocked(Game *game, int player_id);
+void end_game(Game *game, Client *winner, Client *loser, int is_forfeit);
+void handle_forfeit(Client *disconnecting_client);
 
 #endif

@@ -45,6 +45,8 @@ void start_match(Client *c1, Client *c2) {
 
     c1->state = IN_GAME;
     c2->state = IN_GAME;
+    c1->current_game = game;
+    c2->current_game = game;
 
     uint8_t match_data = 1;
     /*
@@ -62,12 +64,22 @@ void update_game_state(Client *c1, Client *c2, Game *game) {
     // Prepare packet for Player 1
     SGameState state1;
     memcpy(state1.board, game->board, BOARD_DATA_SIZE);
-    state1.turn_player_id = (game->current_turn == 1); //If not your turn = 0
+    // 0 = not your turn, 1 = your turn (MOVE phase), 2 = your turn (BLOCK phase)
+    if (game->current_turn == 1) {
+        state1.turn_player_id = (game->phase == PHASE_MOVE) ? 1 : 2;
+    } else {
+        state1.turn_player_id = 0;
+    }
     send_packet(c1, S_GAME_STATE, &state1, sizeof(SGameState));
 
     // Prepare packet for Player 2
     SGameState state2;
     memcpy(state2.board, game->board, BOARD_DATA_SIZE);
-    state2.turn_player_id = (game->current_turn == 2); //If your turn = 1
+    // 0 = not your turn, 1 = your turn (MOVE phase), 2 = your turn (BLOCK phase)
+    if (game->current_turn == 2) {
+        state2.turn_player_id = (game->phase == PHASE_MOVE) ? 1 : 2;
+    } else {
+        state2.turn_player_id = 0;
+    }
     send_packet(c2, S_GAME_STATE, &state2, sizeof(SGameState));
 }

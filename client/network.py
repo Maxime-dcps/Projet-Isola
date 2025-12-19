@@ -84,3 +84,12 @@ class NetworkClient:
         body = struct.pack(f'{MAX_USERNAME_LEN}s 32s', username_padded, password_hash)
 
         return self.send_packet(C_AUTH_CHALLENGE, body)
+
+    def send_change_password(self, old_password, new_password):
+        # Sends C_CHANGE_PASSWORD with old and new password hashes
+        old_hash = hashlib.sha256(old_password.encode('utf-8')).digest()
+        new_hash = hashlib.sha256(new_password.encode('utf-8')).digest()
+        
+        body = struct.pack('32s 32s', old_hash, new_hash)
+        
+        return self.send_packet(C_CHANGE_PASSWORD, body)

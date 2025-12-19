@@ -149,6 +149,92 @@ int create_user(sqlite3 *db, const char *username, const uint8_t *auth_hash) {
 }
 
 int update_user_stats(sqlite3 *db, const char *username, int win_increment, int loss_increment, int forfeit_increment) {
-    //TODO: Implement UPDATE
-    return -1;
+    sqlite3_stmt *stmt;
+    const char *sql_update = 
+        "UPDATE users SET wins = wins + ?, losses = losses + ?, forfeits = forfeits + ? WHERE username = ?;";
+
+    if (sqlite3_prepare_v2(db, sql_update, -1, &stmt, 0) != SQLITE_OK) {
+        printf("SQLITE ERROR: failed to prepare UPDATE statement : %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    // Bind parameters
+    sqlite3_bind_int(stmt, 1, win_increment);
+    sqlite3_bind_int(stmt, 2, loss_increment);
+    sqlite3_bind_int(stmt, 3, forfeit_increment);
+    sqlite3_bind_text(stmt, 4, username, -1, SQLITE_STATIC);
+
+    int status = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (status != SQLITE_DONE) {
+        printf("SQLITE ERROR: execution error during UPDATE : %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    printf("DB: Updated stats for %s (W+%d, L+%d, F+%d)\n", username, win_increment, loss_increment, forfeit_increment);
+    return 0;
+}
+
+int get_all_users(sqlite3 *db, User *users, int max_users) {
+    sqlite3_stmt *stmt;
+    const char *sql_select = "SELECT username, wins, losses, forfeits FROM users ORDER BY wins DESC;";
+
+    if (sqlite3_prepare_v2(db, sql_select, -1, &stmt, 0) != SQLITE_OK) {
+        printf("SQLITE ERROR: failed to prepare SELECT ALL statement : %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && count < max_users) {
+        const char *username = (const char *)sqlite3_column_text(stmt, 0);
+        strncpy(users[count].username, username, MAX_USERNAME_LEN);
+        users[count].wins = (uint16_t)sqlite3_column_int(stmt, 1);
+        users[count].losses = (uint16_t)sqlite3_column_int(stmt, 2);
+        users[count].forfeits = (uint16_t)sqlite3_column_int(stmt, 3);
+        count++;
+    }
+
+    sqlite3_finalize(stmt);
+    return count;
+}
+
+int change_user_password(sqlite3 *db, const char *username, const uint8_t *old_hash, const uint8_t *new_hash) {
+    // First, verify the old password
+    User user;
+    int result = get_user(db, username, &user);
+    
+    if (result != 0) {
+        printf("SQLITE ERROR: User not found for password change\n");
+        return -1;
+    }
+
+    // Compare old password hash
+    if (memcmp(user.password_hash, old_hash, AUTH_HASH_LEN) != 0) {
+        printf("AUTH: Old password mismatch for user %s\n", username);
+        return 1;  // Wrong old password
+    }
+
+    // Update password
+    sqlite3_stmt *stmt;
+    const char *sql_update = "UPDATE users SET password_hash = ? WHERE username = ?;";
+
+    if (sqlite3_prepare_v2(db, sql_update, -1, &stmt, 0) != SQLITE_OK) {
+        printf("SQLITE ERROR: failed to prepare password UPDATE statement : %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    sqlite3_bind_blob(stmt, 1, new_hash, AUTH_HASH_LEN, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, username, -1, SQLITE_STATIC);
+
+    int status = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (status != SQLITE_DONE) {
+        printf("SQLITE ERROR: execution error during password UPDATE : %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    printf("AUTH: Password changed successfully for user %s\n", username);
+    return 0;  // Success
 }

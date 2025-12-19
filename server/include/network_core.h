@@ -51,4 +51,13 @@
     //Checks that body size match the expectation
     int validate_body_size(CommandID command_id, uint16_t body_len);
 
+    //Check if a username is currently connected
+    int is_user_online(const char *username);
+
+    //Handle player list request
+    void handle_player_list_request(Client *client);
+
+    //Handle change password request
+    void handle_change_password(Client *client, const uint8_t *packet_body);
+
 #endif
