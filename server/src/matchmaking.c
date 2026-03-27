@@ -48,14 +48,15 @@ void start_match(Client *c1, Client *c2) {
     c1->current_game = game;
     c2->current_game = game;
 
-    uint8_t match_data = 1;
+    uint8_t match_data_p1 = 1;  // Player 1 = RED
+    uint8_t match_data_p2 = 2;  // Player 2 = BLUE
     /*
-     * Flag for player turn
-     * 1 -> It's your turn
-     * 0 -> It's your opponent turn
+     * Flag for player ID
+     * 1 -> You are Player 1 (RED)
+     * 2 -> You are Player 2 (BLUE)
      */
-    send_packet(c1, S_MATCH_FOUND, &match_data, sizeof(uint8_t));
-    send_packet(c2, S_MATCH_FOUND, &match_data, sizeof(uint8_t));
+    send_packet(c1, S_MATCH_FOUND, &match_data_p1, sizeof(uint8_t));
+    send_packet(c2, S_MATCH_FOUND, &match_data_p2, sizeof(uint8_t));
 
     update_game_state(c1, c2, game);
 }
