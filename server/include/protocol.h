@@ -18,7 +18,7 @@
     //C_AUTH_CHALLENGE
     typedef struct {
         char username[MAX_USERNAME_LEN];
-        uint8_t auth_hash[AUTH_HASH_LEN];
+        char password[MAX_PASSWORD_LEN];  // Hashed server-side
     } CAuthChallenge;
 
     //C_MOVE_PAWN
@@ -81,8 +81,8 @@
 
     //C_CHANGE_PASSWORD
     typedef struct CChangePassword {
-        uint8_t old_password_hash[AUTH_HASH_LEN];
-        uint8_t new_password_hash[AUTH_HASH_LEN];
+        char old_password[MAX_PASSWORD_LEN];
+        char new_password[MAX_PASSWORD_LEN]; 
     } CChangePassword;
 
     //S_CHANGE_PASSWORD_RESPONSE
