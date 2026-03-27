@@ -1,7 +1,6 @@
 import socket
 import struct
 import errno
-import hashlib
 from protocol_constants import *
 
 
@@ -74,22 +73,26 @@ class NetworkClient:
         return packets
 
     def send_auth_challenge(self, username, password):
-        # Sends C_AUTH_CHALLENGE
+        # Sends C_AUTH_CHALLENGE with plaintext password (hashed server-side)
         username_bytes = username.encode('utf-8')[:MAX_USERNAME_LEN] # Might change for ascii
 
         username_padded = username_bytes.ljust(MAX_USERNAME_LEN, b'\x00') # Adds bits to match the size
 
-        password_hash = hashlib.sha256(password.encode('utf-8')).digest() # Hash the password
+        password_bytes = password.encode('utf-8')[:MAX_PASSWORD_LEN]
+        password_padded = password_bytes.ljust(MAX_PASSWORD_LEN, b'\x00')
 
-        body = struct.pack(f'{MAX_USERNAME_LEN}s 32s', username_padded, password_hash)
+        body = struct.pack(f'{MAX_USERNAME_LEN}s {MAX_PASSWORD_LEN}s', username_padded, password_padded)
 
         return self.send_packet(C_AUTH_CHALLENGE, body)
 
     def send_change_password(self, old_password, new_password):
-        # Sends C_CHANGE_PASSWORD with old and new password hashes
-        old_hash = hashlib.sha256(old_password.encode('utf-8')).digest()
-        new_hash = hashlib.sha256(new_password.encode('utf-8')).digest()
+        # Sends C_CHANGE_PASSWORD with plaintext passwords (hashed server-side)
+        old_bytes = old_password.encode('utf-8')[:MAX_PASSWORD_LEN]
+        old_padded = old_bytes.ljust(MAX_PASSWORD_LEN, b'\x00')
         
-        body = struct.pack('32s 32s', old_hash, new_hash)
+        new_bytes = new_password.encode('utf-8')[:MAX_PASSWORD_LEN]
+        new_padded = new_bytes.ljust(MAX_PASSWORD_LEN, b'\x00')
+        
+        body = struct.pack(f'{MAX_PASSWORD_LEN}s {MAX_PASSWORD_LEN}s', old_padded, new_padded)
         
         return self.send_packet(C_CHANGE_PASSWORD, body)
