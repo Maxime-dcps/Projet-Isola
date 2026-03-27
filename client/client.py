@@ -45,6 +45,7 @@ class IsolaClientApp:
         self.game_phase = 'MOVE' # MOVE or BLOCK
         self.is_my_turn = False
         self.username = ""
+        self.my_player_id = 0  # 1 = RED, 2 = BLUE
         self.board_data = None  # Store board state for drawing
         self.tiles = [] # Store buttons for the grid
         self.init_login_ui()
@@ -89,12 +90,12 @@ class IsolaClientApp:
         )
 
     def init_lobby_ui(self, wins=0, losses=0, forfeits=0):
-        # On cache le message d'erreur du login s'il existait
+        # Hide login error message if it existed
         self.status_message.hide()
 
-        # On agrandit le panneau (Passage de 300 à 450 de hauteur)
+        # Lobby panel
         self.lobby_panel = pygame_gui.elements.UIPanel(
-            relative_rect=pygame.Rect((WIDTH // 4, HEIGHT // 8), (400, 450)),
+            relative_rect=pygame.Rect((WIDTH // 4, HEIGHT // 8), (400, 380)),
             manager=MANAGER
         )
 
@@ -105,36 +106,30 @@ class IsolaClientApp:
             manager=MANAGER, container=self.lobby_panel
         )
 
-        # Simple data label
-        self.stats_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect((20, 50), (400, 40)),
-            text=f"W: {wins} | L: {losses} | F: {forfeits}", manager=MANAGER, container=self.lobby_panel
-        )
-
-        # On repositionne les boutons pour qu'ils soient centrés dans le nouveau panneau
+        # Center buttons horizontally in the panel
         button_width = 200
-        start_x = (400 - button_width) // 2  # Centre horizontalement dans le panel de 400px
+        start_x = (400 - button_width) // 2
 
         self.play_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((start_x, 100), (button_width, 50)),
+            relative_rect=pygame.Rect((start_x, 60), (button_width, 50)),
             text="FIND MATCH", manager=MANAGER, container=self.lobby_panel
         )
         self.players_list_btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((start_x, 170), (button_width, 40)),
+            relative_rect=pygame.Rect((start_x, 130), (button_width, 40)),
             text="Player List", manager=MANAGER, container=self.lobby_panel
         )
         self.change_pw_btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((start_x, 220), (button_width, 40)),
+            relative_rect=pygame.Rect((start_x, 180), (button_width, 40)),
             text="Change Password", manager=MANAGER, container=self.lobby_panel
         )
         self.logout_btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((start_x, 270), (button_width, 40)),
+            relative_rect=pygame.Rect((start_x, 230), (button_width, 40)),
             text="Logout", manager=MANAGER, container=self.lobby_panel
         )
 
-        # Position du statut en bas du panel
+        # Status label at the bottom of panel
         self.lobby_status = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect((20, 380), (360, 40)),
+            relative_rect=pygame.Rect((20, 310), (360, 40)),
             text="Status: Ready to play",
             manager=MANAGER, container=self.lobby_panel
         )
@@ -205,7 +200,7 @@ class IsolaClientApp:
             self.game_info.set_text("Waiting for opponent...")
 
     def draw_game_board(self):
-        """Draw custom graphics over the game board"""
+        # Draw custom graphics over the game board
         if self.state != 'IN_GAME' or self.board_data is None:
             return
 
@@ -228,14 +223,20 @@ class IsolaClientApp:
                 elif val == 2:  # Player 2 - Blue circle
                     pygame.draw.circle(screen, COLOR_P2, (center_x, center_y), radius)
                     pygame.draw.circle(screen, (30, 30, 180), (center_x, center_y), radius, 3)
-                elif val == 3:  # Blocked tile - Red X centered
-                    cross_size = 15
-                    pygame.draw.line(screen, (220, 60, 60), 
+                elif val == 3:  # Blocked tile - Dark background with thick red X
+                    # Draw dark background
+                    padding = 4
+                    bg_rect = pygame.Rect(btn_rect.x + padding, btn_rect.y + padding, 
+                                         btn_rect.width - 2*padding, btn_rect.height - 2*padding)
+                    pygame.draw.rect(screen, COLOR_BLOCKED, bg_rect)
+                    # Draw thick red X
+                    cross_size = 18
+                    pygame.draw.line(screen, (200, 50, 50), 
                                    (center_x - cross_size, center_y - cross_size),
-                                   (center_x + cross_size, center_y + cross_size), 5)
-                    pygame.draw.line(screen, (220, 60, 60),
+                                   (center_x + cross_size, center_y + cross_size), 7)
+                    pygame.draw.line(screen, (200, 50, 50),
                                    (center_x + cross_size, center_y - cross_size),
-                                   (center_x - cross_size, center_y + cross_size), 5)
+                                   (center_x - cross_size, center_y + cross_size), 7)
 
         # Draw turn indicator below the board
         last_btn_rect = self.tiles[BOARD_ROWS-1][0].get_abs_rect()
@@ -243,7 +244,7 @@ class IsolaClientApp:
         self.draw_turn_indicator(first_btn_rect.x, last_btn_rect.bottom)
 
     def draw_turn_indicator(self, board_x, board_bottom):
-        """Draw a simple indicator below the board"""
+        # Draw turn indicator below the board
         if self.board_data is None:
             return
 
@@ -253,10 +254,14 @@ class IsolaClientApp:
         indicator_height = 10
         
         if self.is_my_turn:
-            # Green bar
-            pygame.draw.rect(screen, (50, 200, 80), (board_x, indicator_y, indicator_width, indicator_height))
+            # Color based on player: RED for player 1, BLUE for player 2
+            if self.my_player_id == 1:
+                color = COLOR_P1  # Red
+            else:
+                color = COLOR_P2  # Blue
+            pygame.draw.rect(screen, color, (board_x, indicator_y, indicator_width, indicator_height))
         else:
-            # Gray bar
+            # Gray bar when waiting
             pygame.draw.rect(screen, (80, 80, 80), (board_x, indicator_y, indicator_width, indicator_height))
 
     # --- LOGIC ---
@@ -279,9 +284,8 @@ class IsolaClientApp:
                     self.init_lobby_ui(wins, losses, forfeits)
                     self.lobby_panel.show()
 
-                    # Update Labels with actual data
+                    # Update welcome label
                     self.welcome_label.set_text(f"Welcome, {self.username}!")
-                    self.stats_label.set_text(f"Wins: {wins} | Losses: {losses} | Forfeits: {forfeits}")
 
                     if status == S_STATUS_CREATED:
                         self.lobby_status.set_text("Status: Account created successfully!")
@@ -296,9 +300,11 @@ class IsolaClientApp:
                 self.play_button.disable()
 
             elif command_id == S_MATCH_FOUND:
+                # 1B player_id (1 = RED, 2 = BLUE)
+                self.my_player_id = body[0]
                 self.lobby_status.set_text("Status: Match Found! Starting...")
-                # TODO: Init to Game Scene
-                print("DEBUG: Matchmaking successful, preparing board.")
+                player_color = "RED" if self.my_player_id == 1 else "BLUE"
+                print(f"DEBUG: Matchmaking successful, you are {player_color}.")
 
             elif command_id == S_GAME_STATE:
                 # 48B Board + 1B Turn flag = 49 bytes
@@ -436,14 +442,13 @@ class IsolaClientApp:
         self.state = 'AUTHENTICATED'
         self.tiles = []
 
-        # Update lobby with new stats
-        self.stats_label.set_text(f"W: {wins} | L: {losses} | F: {forfeits}")
+        # Update lobby status and return to lobby
         self.lobby_status.set_text(f"Status: {result_text}")
         self.play_button.enable()
         self.lobby_panel.show()
 
     def handle_player_list(self, body):
-        """Handle S_PLAYER_LIST packet and display player list UI"""
+        # Handle S_PLAYER_LIST packet and display player list UI
         # Each PlayerEntry: 16B username + 2B wins + 2B losses + 2B forfeits + 1B is_online + 1B padding = 24 bytes
         ENTRY_SIZE = 24
         player_count = len(body) // ENTRY_SIZE
@@ -465,7 +470,7 @@ class IsolaClientApp:
         self.show_player_list(players)
 
     def show_player_list(self, players):
-        """Display the player list panel"""
+        # Display the player list panel
         # Hide lobby panel
         self.lobby_panel.hide()
 
@@ -515,39 +520,53 @@ class IsolaClientApp:
         for i, player in enumerate(players[:max_display]):
             y = start_y + i * row_height
             
-            # Username with color based on online status
-            if player['is_online']:
-                # Green label for online players
-                label = pygame_gui.elements.UILabel(
-                    relative_rect=pygame.Rect((20, y), (150, 25)),
-                    text=player['username'],
-                    manager=MANAGER, container=self.player_list_panel
-                )
-                label.text_colour = pygame.Color(50, 200, 80)
-                label.rebuild()
+            # Determine row color
+            is_self = (player['username'] == self.username)
+            
+            # Username label
+            label = pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect((20, y), (150, 25)),
+                text=player['username'],
+                manager=MANAGER, container=self.player_list_panel
+            )
+            
+            # Color based on: self (blue), online (green), offline (default)
+            if is_self:
+                row_color = pygame.Color(80, 130, 255)  # Blue for self
+            elif player['is_online']:
+                row_color = pygame.Color(50, 200, 80)   # Green for online
             else:
-                pygame_gui.elements.UILabel(
-                    relative_rect=pygame.Rect((20, y), (150, 25)),
-                    text=player['username'],
-                    manager=MANAGER, container=self.player_list_panel
-                )
+                row_color = None  # Default color
+            
+            if row_color:
+                label.text_colour = row_color
+                label.rebuild()
 
-            # Stats
-            pygame_gui.elements.UILabel(
+            # Stats with same color for self
+            wins_label = pygame_gui.elements.UILabel(
                 relative_rect=pygame.Rect((180, y), (80, 25)),
                 text=str(player['wins']),
                 manager=MANAGER, container=self.player_list_panel
             )
-            pygame_gui.elements.UILabel(
+            losses_label = pygame_gui.elements.UILabel(
                 relative_rect=pygame.Rect((260, y), (80, 25)),
                 text=str(player['losses']),
                 manager=MANAGER, container=self.player_list_panel
             )
-            pygame_gui.elements.UILabel(
+            forfeits_label = pygame_gui.elements.UILabel(
                 relative_rect=pygame.Rect((340, y), (80, 25)),
                 text=str(player['forfeits']),
                 manager=MANAGER, container=self.player_list_panel
             )
+            
+            # Apply color to all columns if it's self
+            if is_self:
+                wins_label.text_colour = row_color
+                wins_label.rebuild()
+                losses_label.text_colour = row_color
+                losses_label.rebuild()
+                forfeits_label.text_colour = row_color
+                forfeits_label.rebuild()
 
         # Close button
         self.close_list_btn = pygame_gui.elements.UIButton(
@@ -557,14 +576,14 @@ class IsolaClientApp:
         )
 
     def close_player_list(self):
-        """Close the player list panel and return to lobby"""
+        # Close the player list panel and return to lobby
         if hasattr(self, 'player_list_panel'):
             self.player_list_panel.kill()
             del self.player_list_panel
         self.lobby_panel.show()
 
     def handle_logout(self):
-        """Handle logout: close connection, reconnect and return to login screen"""
+        # Handle logout: close connection, reconnect and return to login screen
         # Send disconnect packet to server
         self.network.send_packet(C_DISCONNECT)
         
@@ -597,7 +616,7 @@ class IsolaClientApp:
         self.password_input.set_text("")
 
     def show_change_password_dialog(self):
-        """Show dialog to change password"""
+        # Show dialog to change password
         self.lobby_panel.hide()
         
         panel_width = 350
@@ -656,7 +675,7 @@ class IsolaClientApp:
         )
     
     def submit_password_change(self):
-        """Send password change request to server"""
+        # Send password change request to server
         old_pw = self.old_pw_input.get_text()
         new_pw = self.new_pw_input.get_text()
         
@@ -672,14 +691,14 @@ class IsolaClientApp:
         self.network.send_change_password(old_pw, new_pw)
     
     def close_change_password_dialog(self):
-        """Close password change dialog and return to lobby"""
+        # Close password change dialog and return to lobby
         if hasattr(self, 'pw_dialog_panel'):
             self.pw_dialog_panel.kill()
             del self.pw_dialog_panel
         self.lobby_panel.show()
     
     def handle_change_password_response(self, status):
-        """Handle server response to password change"""
+        # Handle server response to password change
         if not hasattr(self, 'pw_dialog_panel'):
             return
         
