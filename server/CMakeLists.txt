@@ -14,5 +14,6 @@ add_executable(ProjetReseaux
 target_include_directories(ProjetReseaux PRIVATE include)
 
 find_package(SQLite3 REQUIRED)
+find_package(OpenSSL REQUIRED)
 
-target_link_libraries(ProjetReseaux PRIVATE SQLite::SQLite3)
+target_link_libraries(ProjetReseaux PRIVATE SQLite::SQLite3 OpenSSL::SSL OpenSSL::Crypto)
