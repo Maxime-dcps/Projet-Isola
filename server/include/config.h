@@ -9,7 +9,9 @@
     #define SQLITE_DB_NAME "isola_profiles.db"
 
     #define MAX_USERNAME_LEN 16
+    #define MAX_PASSWORD_LEN 32  //Max password length (plaintext)
     #define AUTH_HASH_LEN 32
+    #define SALT_LEN 16          //Salt length for password hashing
     #define HEADER_SIZE 4        //Message header size (ID 1, reserved 1, length of content 2)
     #define BOARD_DATA_SIZE 48   //6x8 * 1 byte/tile = 48 bytes
 
