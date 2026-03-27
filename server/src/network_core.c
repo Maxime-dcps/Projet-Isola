@@ -425,7 +425,15 @@ void handle_change_password(Client *client, const uint8_t *packet_body) {
     const CChangePassword *req = (const CChangePassword *)packet_body;
     SChangePasswordResponse response;
     
-    int result = change_user_password(db_conn, client->username, req->old_password_hash, req->new_password_hash);
+    //Extract passwords safely
+    char old_password[MAX_PASSWORD_LEN + 1];
+    char new_password[MAX_PASSWORD_LEN + 1];
+    strncpy(old_password, req->old_password, MAX_PASSWORD_LEN);
+    old_password[MAX_PASSWORD_LEN] = '\0';
+    strncpy(new_password, req->new_password, MAX_PASSWORD_LEN);
+    new_password[MAX_PASSWORD_LEN] = '\0';
+    
+    int result = change_user_password(db_conn, client->username, old_password, new_password);
     
     if (result == 0) {
         response.status = PASSWORD_CHANGE_SUCCESS;

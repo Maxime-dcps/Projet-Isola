@@ -13,6 +13,11 @@ void handle_auth_challenge(Client *client, const CAuthChallenge *challenge) {
     strncpy(username_safe, challenge->username, MAX_USERNAME_LEN);
     username_safe[MAX_USERNAME_LEN] = '\0';
 
+    //Extract password safely
+    char password_safe[MAX_PASSWORD_LEN + 1];
+    strncpy(password_safe, challenge->password, MAX_PASSWORD_LEN);
+    password_safe[MAX_PASSWORD_LEN] = '\0';
+
     int status = get_user(db_conn, username_safe, &user_profile);
     
     //Database error
@@ -23,11 +28,11 @@ void handle_auth_challenge(Client *client, const CAuthChallenge *challenge) {
 
     } else if (status == 1) {
         //User not found -> create a new account
-        process_user_creation(client, username_safe, challenge->auth_hash, &response);
+        process_user_creation(client, username_safe, password_safe, &response);
 
     } else { 
         //User Found -> authenticate
-        process_user_authentication(client, &user_profile, challenge->auth_hash, &response);
+        process_user_authentication(client, &user_profile, password_safe, &response);
     }
 
     //Send response to the client
@@ -35,8 +40,15 @@ void handle_auth_challenge(Client *client, const CAuthChallenge *challenge) {
 
 }
 
-void process_user_creation(Client *client, char username_safe[17], const uint8_t challenge_hash[32], SAuthResponse *response) {
-    if (create_user(db_conn, username_safe, challenge_hash) == 0) {
+void process_user_creation(Client *client, char username_safe[17], const char *password, SAuthResponse *response) {
+    //Generate salt and hash password
+    uint8_t salt[SALT_LEN];
+    uint8_t password_hash[AUTH_HASH_LEN];
+    
+    generate_salt(salt);
+    hash_password_with_salt(password, salt, password_hash);
+    
+    if (create_user(db_conn, username_safe, password_hash, salt) == 0) {
         //Creation Success: Initialize profile data
         strncpy(client->username, username_safe, MAX_USERNAME_LEN);
         client->state = AUTHENTICATED;
@@ -53,9 +65,13 @@ void process_user_creation(Client *client, char username_safe[17], const uint8_t
     }
 }
 
-void process_user_authentication(Client *client, User *user_profile, const uint8_t challenge_hash[32], SAuthResponse *response) {
-    //Compare the received hash with the stored hash
-    if (memcmp(challenge_hash, user_profile->password_hash, AUTH_HASH_LEN) == 0) {
+void process_user_authentication(Client *client, User *user_profile, const char *password, SAuthResponse *response) {
+    //Hash the received password with the stored salt
+    uint8_t computed_hash[AUTH_HASH_LEN];
+    hash_password_with_salt(password, user_profile->salt, computed_hash);
+    
+    //Compare the computed hash with the stored hash
+    if (memcmp(computed_hash, user_profile->password_hash, AUTH_HASH_LEN) == 0) {
         //Authentication Success
         strncpy(client->username, user_profile->username, MAX_USERNAME_LEN);
         client->state = AUTHENTICATED;
