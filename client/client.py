@@ -351,7 +351,7 @@ class IsolaClientApp:
                     if event.ui_element == self.login_button:
                         self.handle_login_button(event)
                     elif hasattr(self, 'play_button') and event.ui_element == self.play_button:
-                        self.network.send_packet(C_PLAY_REQUEST)
+                        self.network.send_packet(C_PLAY_REQUEST, struct.pack("B", PLAYER_VS_PLAYER))
                     elif hasattr(self, 'players_list_btn') and event.ui_element == self.players_list_btn:
                         self.network.send_packet(C_GET_PLAYER_LIST)
                     elif hasattr(self, 'close_list_btn') and event.ui_element == self.close_list_btn:

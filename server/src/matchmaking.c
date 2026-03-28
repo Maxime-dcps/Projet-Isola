@@ -9,29 +9,46 @@
 //Simple pointer to the waiting player
 Client *waiting_client = NULL;
 
-void handle_play_request(Client *client) {
+void handle_play_request(Client *client, const uint8_t *body) {
     //Check the client status
     if (client->state != AUTHENTICATED) return;
 
-    if (waiting_client == NULL) {
-        //The queue is empty, client is added to the waiting room
-        waiting_client = client;
-        client->state = IN_QUEUE;
+    // Extract game mode safely
+    CPlayRequest play_rqst_pkt;
+    memcpy(&play_rqst_pkt, body, sizeof(CPlayRequest));
+    uint8_t game_mode = play_rqst_pkt.game_mode;
 
-        printf("MATCHMAKING: %s is now waiting for an opponent.\n", client->username);
+    if(game_mode != PLAYER_VS_AI && game_mode != PLAYER_VS_PLAYER) game_mode = PLAYER_VS_PLAYER;
 
-        uint8_t status = 1;
-        send_packet(client, S_WAITING_OPPONENT, &status, sizeof(uint8_t));
+    if(game_mode == PLAYER_VS_PLAYER)
+    {
+        printf("MATCHMAKING: requesting to play versus a player\n");
+        
+        if (waiting_client == NULL) {
+            //The queue is empty, client is added to the waiting room
+            waiting_client = client;
+            client->state = IN_QUEUE;
+    
+            printf("MATCHMAKING: %s is now waiting for an opponent.\n", client->username);
+    
+            uint8_t status = 1;
+            send_packet(client, S_WAITING_OPPONENT, &status, sizeof(uint8_t));
+        }
+        else {
+            //Someone was waiting -> start the match
+            Client *p1 = waiting_client;
+            Client *p2 = client;
+    
+            waiting_client = NULL;
+    
+            start_match(p1, p2);
+        }
     }
-    else {
-        //Someone was waiting -> start the match
-        Client *p1 = waiting_client;
-        Client *p2 = client;
-
-        waiting_client = NULL;
-
-        start_match(p1, p2);
+    else if(game_mode == PLAYER_VS_AI)
+    {
+        printf("MATCHMAKING: requesting to play versus the AI\n");
     }
+
 }
 
 void start_match(Client *c1, Client *c2) {

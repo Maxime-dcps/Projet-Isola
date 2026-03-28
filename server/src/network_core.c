@@ -257,8 +257,9 @@ void fsm_process_packet(Client *client, CommandID command_id, const uint8_t *pac
     // Check command validity based on the client's current state (FSM)
 
     if (!validate_body_size(command_id, body_len)) {
-        printf("SECURITY ALERT: Invalid body size (%u) for command_id (%d) from FD: %d. Expected: %zu\n", body_len, command_id, client->socket_fd, sizeof(CAuthChallenge));
+        printf("SECURITY ALERT: Invalid body size from FD: %d.\n", client->socket_fd);
         client->state = DISCONNECTED;
+        return;
     }
 
     switch (client->state) {
@@ -280,7 +281,7 @@ void fsm_process_packet(Client *client, CommandID command_id, const uint8_t *pac
         case AUTHENTICATED:
             // Client is in the lobby, expecting C_PLAY_REQUEST or C_DISCONNECT
             if (command_id == C_PLAY_REQUEST) {
-                handle_play_request(client);
+                handle_play_request(client, packet_body);
                 printf("FSM INFO: User %s requesting match.\n", client->username);
             } else if (command_id == C_GET_PLAYER_LIST) {
                 handle_player_list_request(client);
@@ -339,14 +340,24 @@ int validate_body_size(CommandID command_id, uint16_t body_len) {
             expected_len = sizeof(CChangePassword);
             break;
         case C_GET_PLAYER_LIST:
+            expected_len = 0;
+            break;
         case C_PLAY_REQUEST:
+            expected_len = sizeof(CPlayRequest);
+            break;
         case C_DISCONNECT:
             expected_len = 0;  // No body for these commands
             break;
         default:
             return -1;
     }
-    return (body_len == expected_len);
+
+    if (body_len != (uint16_t)expected_len) {
+        printf("SECURITY ALERT: Invalid body size (%u) for command_id (%d). Expected: %d\n", body_len, command_id, expected_len);
+        return 0;
+    }
+
+    return 1;
 }
 
 int is_user_online(const char *username) {

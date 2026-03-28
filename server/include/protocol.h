@@ -21,6 +21,15 @@
         char password[MAX_PASSWORD_LEN];  // Hashed server-side
     } CAuthChallenge;
 
+    //C_PLAY_REQUEST
+
+    #define PLAYER_VS_PLAYER 1
+    #define PLAYER_VS_AI 2
+
+    typedef struct {
+        uint8_t game_mode;
+    } CPlayRequest;
+
     //C_MOVE_PAWN
     typedef struct {
         uint8_t to_pos_encoded; //LLLCCC00 (3 bits for the line, 3 bits for the column, 2 bits reserved)
