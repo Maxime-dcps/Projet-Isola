@@ -114,16 +114,20 @@ class IsolaClientApp:
             relative_rect=pygame.Rect((start_x, 60), (button_width, 50)),
             text="FIND MATCH", manager=MANAGER, container=self.lobby_panel
         )
+        self.play_ai_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((start_x, 120), (button_width, 40)),
+            text="MR. SPOCK", manager=MANAGER, container=self.lobby_panel
+        )
         self.players_list_btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((start_x, 130), (button_width, 40)),
+            relative_rect=pygame.Rect((start_x, 170), (button_width, 40)),
             text="Player List", manager=MANAGER, container=self.lobby_panel
         )
         self.change_pw_btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((start_x, 180), (button_width, 40)),
+            relative_rect=pygame.Rect((start_x, 220), (button_width, 40)),
             text="Change Password", manager=MANAGER, container=self.lobby_panel
         )
         self.logout_btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((start_x, 230), (button_width, 40)),
+            relative_rect=pygame.Rect((start_x, 270), (button_width, 40)),
             text="Logout", manager=MANAGER, container=self.lobby_panel
         )
 
@@ -298,6 +302,7 @@ class IsolaClientApp:
             elif command_id == S_WAITING_OPPONENT:
                 self.lobby_status.set_text("Status: Searching for opponent...")
                 self.play_button.disable()
+                self.play_ai_button.disable()
 
             elif command_id == S_MATCH_FOUND:
                 # 1B player_id (1 = RED, 2 = BLUE)
@@ -352,6 +357,8 @@ class IsolaClientApp:
                         self.handle_login_button(event)
                     elif hasattr(self, 'play_button') and event.ui_element == self.play_button:
                         self.network.send_packet(C_PLAY_REQUEST, struct.pack("B", PLAYER_VS_PLAYER))
+                    elif hasattr(self, 'play_ai_button') and event.ui_element == self.play_ai_button:
+                        self.network.send_packet(C_PLAY_REQUEST, struct.pack("B", PLAYER_VS_AI))
                     elif hasattr(self, 'players_list_btn') and event.ui_element == self.players_list_btn:
                         self.network.send_packet(C_GET_PLAYER_LIST)
                     elif hasattr(self, 'close_list_btn') and event.ui_element == self.close_list_btn:
@@ -445,6 +452,7 @@ class IsolaClientApp:
         # Update lobby status and return to lobby
         self.lobby_status.set_text(f"Status: {result_text}")
         self.play_button.enable()
+        self.play_ai_button.enable()
         self.lobby_panel.show()
 
     def handle_player_list(self, body):
