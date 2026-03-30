@@ -38,6 +38,7 @@ typedef struct Game {
     PlayerPos pos2;
     int current_turn; //1 or 2
     GamePhase phase;  //Added to track Move vs Block
+    int game_mode;
     struct Game *next; //Pointer to the next game
 } Game;
 

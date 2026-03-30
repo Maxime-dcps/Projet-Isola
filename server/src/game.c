@@ -13,9 +13,11 @@ Game* create_game(Client *p1, Client *p2) {
     Game *new_game = (Game *)malloc(sizeof(Game));
     if (!new_game) return NULL;
 
+    new_game->game_mode = (p2 != NULL) ? PLAYER_VS_PLAYER : PLAYER_VS_AI;
+
     new_game->player1 = p1;
     new_game->player2 = p2;
-    new_game->current_turn = 1; //TODO: Random player starts
+    new_game->current_turn = 1; //TODO: Random player starts. Carefull with order ! OK for AI to start ?
 
     new_game->phase = PHASE_MOVE;
 
@@ -113,7 +115,7 @@ void handle_move_request(Client *client, const uint8_t *body) {
 
         printf("GAME: %s moved successfully. Waiting for block.\n", client->username);
 
-        update_game_state(game->player1, game->player2, game);
+        update_game_state(game);
     }
 }
 
@@ -151,10 +153,14 @@ void handle_block_request(Client *client, const uint8_t *body) {
         if (check_player_blocked(game, next_player)) {
             Client *winner = (next_player == 1) ? game->player2 : game->player1;
             Client *loser = (next_player == 1) ? game->player1 : game->player2;
-            printf("GAME: Player %d is blocked! %s wins!\n", next_player, winner->username);
+
+            const char *winner_name = (winner != NULL) ? winner->username : AI_NAME;
+            const char *loser_name  = (loser  != NULL) ? loser->username  : AI_NAME;
+
+            printf("GAME: Player %s is blocked! %s wins!\n", loser_name, winner_name);
             end_game(game, winner, loser, 0);
         } else {
-            update_game_state(game->player1, game->player2, game);
+            update_game_state(game); // FIXME: need to be ai alignated
         }
     }
 }
@@ -185,48 +191,59 @@ int check_player_blocked(Game *game, int player_id) {
 
 // End the game, update stats, notify clients, cleanup
 void end_game(Game *game, Client *winner, Client *loser, int is_forfeit) {
-    if (!game || !winner || !loser) return;
+    if (!game) return;
+
+    // apply_game_result(winner, );
 
     // Update database stats
     if (is_forfeit) {
-        // Loser gets a forfeit
-        update_user_stats(db_conn, winner->username, 1, 0, 0); // Win
-        update_user_stats(db_conn, loser->username, 0, 0, 1);  // Forfeit
+        if (winner) update_user_stats(db_conn, winner->username, 1, 0, 0); // Win
+        if (loser)  update_user_stats(db_conn, loser->username,  0, 0, 1); // Forfeit
     } else {
-        // Normal game end
-        update_user_stats(db_conn, winner->username, 1, 0, 0); // Win
-        update_user_stats(db_conn, loser->username, 0, 1, 0);  // Loss
+        if (winner) update_user_stats(db_conn, winner->username, 1, 0, 0); // Win
+        if (loser)  update_user_stats(db_conn, loser->username,  0, 1, 0); // Loss
     }
 
-    // Get updated stats for both players
-    User winner_stats, loser_stats;
-    get_user(db_conn, winner->username, &winner_stats);
-    get_user(db_conn, loser->username, &loser_stats);
+    // Send S_GAME_OVER to winner (if human)
+    if (winner) {
+        User winner_stats;
+        get_user(db_conn, winner->username, &winner_stats);
 
-    // Prepare and send S_GAME_OVER to winner
-    SGameOver winner_pkt;
-    winner_pkt.result = is_forfeit ? GAME_RESULT_FORFEIT_WIN : GAME_RESULT_WIN;
-    winner_pkt.wins = htons(winner_stats.wins);
-    winner_pkt.losses = htons(winner_stats.losses);
-    winner_pkt.forfeits = htons(winner_stats.forfeits);
-    send_packet(winner, S_GAME_OVER, &winner_pkt, sizeof(SGameOver));
+        // Prepare and send S_GAME_OVER to winner
+        SGameOver winner_pkt;
+        winner_pkt.result = is_forfeit ? GAME_RESULT_FORFEIT_WIN : GAME_RESULT_WIN;
+        winner_pkt.wins = htons(winner_stats.wins);
+        winner_pkt.losses = htons(winner_stats.losses);
+        winner_pkt.forfeits = htons(winner_stats.forfeits);
+        send_packet(winner, S_GAME_OVER, &winner_pkt, sizeof(SGameOver));
+    }
 
     // Prepare and send S_GAME_OVER to loser
-    SGameOver loser_pkt;
-    loser_pkt.result = is_forfeit ? GAME_RESULT_FORFEIT_LOSS : GAME_RESULT_LOSS;
-    loser_pkt.wins = htons(loser_stats.wins);
-    loser_pkt.losses = htons(loser_stats.losses);
-    loser_pkt.forfeits = htons(loser_stats.forfeits);
-    send_packet(loser, S_GAME_OVER, &loser_pkt, sizeof(SGameOver));
+    if (loser) {
+        User loser_stats;
+        get_user(db_conn, loser->username, &loser_stats);
 
-    printf("GAME: Game ended. Winner: %s, Loser: %s (forfeit: %d)\n", 
-           winner->username, loser->username, is_forfeit);
+        SGameOver loser_pkt;
+        loser_pkt.result = is_forfeit ? GAME_RESULT_FORFEIT_LOSS : GAME_RESULT_LOSS;
+        loser_pkt.wins = htons(loser_stats.wins);
+        loser_pkt.losses = htons(loser_stats.losses);
+        loser_pkt.forfeits = htons(loser_stats.forfeits);
+        send_packet(loser, S_GAME_OVER, &loser_pkt, sizeof(SGameOver));
+    }
+
+    const char *winner_name = (winner != NULL) ? winner->username : AI_NAME;
+    const char *loser_name  = (loser  != NULL) ? loser->username  : AI_NAME;
+    printf("GAME: Game ended. Winner: %s, Loser: %s (forfeit: %d)\n", winner_name, loser_name, is_forfeit);
 
     // Reset client states
-    winner->state = AUTHENTICATED;
-    winner->current_game = NULL;
-    loser->state = AUTHENTICATED;
-    loser->current_game = NULL;
+    if (winner) {
+        winner->state = AUTHENTICATED;
+        winner->current_game = NULL;
+    }
+    if (loser) {
+        loser->state = AUTHENTICATED;
+        loser->current_game = NULL;
+    }
 
     // Remove game from list and free memory
     remove_game(game);
@@ -241,26 +258,25 @@ void handle_forfeit(Client *disconnecting_client) {
     Client *winner = (disconnecting_client == game->player1) ? game->player2 : game->player1;
     Client *loser = disconnecting_client;
 
-    // Update stats - only for the winner since loser is disconnecting
-    update_user_stats(db_conn, winner->username, 1, 0, 0); // Win
-    update_user_stats(db_conn, loser->username, 0, 0, 1);  // Forfeit
+    // Update stats 
+    if (winner) update_user_stats(db_conn, winner->username, 1, 0, 0); // Win
+    if (loser)  update_user_stats(db_conn, loser->username,  0, 0, 1); // Forfeit
 
-    // Get updated stats and notify winner
-    User winner_stats;
-    get_user(db_conn, winner->username, &winner_stats);
+    // Notify only winner
+    if (winner) {
+        User winner_stats;
+        get_user(db_conn, winner->username, &winner_stats);
 
-    SGameOver winner_pkt;
-    winner_pkt.result = GAME_RESULT_FORFEIT_WIN;
-    winner_pkt.wins = htons(winner_stats.wins);
-    winner_pkt.losses = htons(winner_stats.losses);
-    winner_pkt.forfeits = htons(winner_stats.forfeits);
-    send_packet(winner, S_GAME_OVER, &winner_pkt, sizeof(SGameOver));
+        SGameOver winner_pkt;
+        winner_pkt.result = GAME_RESULT_FORFEIT_WIN;
+        winner_pkt.wins = htons(winner_stats.wins);
+        winner_pkt.losses = htons(winner_stats.losses);
+        winner_pkt.forfeits = htons(winner_stats.forfeits);
+        send_packet(winner, S_GAME_OVER, &winner_pkt, sizeof(SGameOver));
 
-    printf("GAME: %s forfeited. %s wins by forfeit.\n", loser->username, winner->username);
-
-    // Reset winner state
-    winner->state = AUTHENTICATED;
-    winner->current_game = NULL;
+        winner->state = AUTHENTICATED;
+        winner->current_game = NULL;
+    }
 
     // Clear loser's game pointer (will be freed in end_session)
     loser->current_game = NULL;

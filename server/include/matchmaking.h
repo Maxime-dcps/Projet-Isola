@@ -6,6 +6,7 @@
 #define PROJETRESEAUX_MATCHMAKING_H
 
 #include <stdint.h>
+#include "protocol.h"
 
 // Forward declarations to avoid circular dependencies
 typedef struct Client Client;
@@ -16,6 +17,6 @@ typedef struct Game Game;
     void handle_play_request(Client *client, const uint8_t *body);
 
     void start_match(Client *c1, Client *c2);
-    void update_game_state(Client *c1, Client *c2, Game *game);
+    void update_game_state(Game *game);
 
 #endif

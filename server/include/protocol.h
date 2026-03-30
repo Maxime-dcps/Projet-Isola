@@ -6,6 +6,7 @@
 #define PROJETRESEAUX_PROTOCOL_H
 
 #include "game.h"
+#include "config.h"
 
     typedef struct {
         uint8_t  command_id;
@@ -25,6 +26,7 @@
 
     #define PLAYER_VS_PLAYER 1
     #define PLAYER_VS_AI 2
+    #define AI_NAME "Mr. Spock"
 
     typedef struct {
         uint8_t game_mode;

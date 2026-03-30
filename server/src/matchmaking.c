@@ -47,12 +47,17 @@ void handle_play_request(Client *client, const uint8_t *body) {
     else if(game_mode == PLAYER_VS_AI)
     {
         printf("MATCHMAKING: requesting to play versus the AI\n");
+
+        Client *player = client;
+
+        start_match(player, NULL); // Will initiate the AI_flag
     }
 
 }
 
 void start_match(Client *c1, Client *c2) {
-    printf("MATCHMAKING: Starting match between %s and %s!\n", c1->username, c2->username);
+    const char *p2_name = (c2 != NULL) ? c2->username : AI_NAME;
+    printf("MATCHMAKING: Starting match between %s and %s!\n", c1->username, p2_name);
 
     Game *game = create_game(c1, c2);
     if (!game) {
@@ -61,9 +66,13 @@ void start_match(Client *c1, Client *c2) {
     }
 
     c1->state = IN_GAME;
-    c2->state = IN_GAME;
     c1->current_game = game;
-    c2->current_game = game;
+    if (game->game_mode == PLAYER_VS_PLAYER)
+    {
+        // c2 is NULL if PLAYER_VS_AI
+        c2->state = IN_GAME;
+        c2->current_game = game;
+    }
 
     uint8_t match_data_p1 = 1;  // Player 1 = RED
     uint8_t match_data_p2 = 2;  // Player 2 = BLUE
@@ -73,12 +82,16 @@ void start_match(Client *c1, Client *c2) {
      * 2 -> You are Player 2 (BLUE)
      */
     send_packet(c1, S_MATCH_FOUND, &match_data_p1, sizeof(uint8_t));
-    send_packet(c2, S_MATCH_FOUND, &match_data_p2, sizeof(uint8_t));
+    if (game->game_mode == PLAYER_VS_PLAYER) 
+    {
+        // Only send packet if c2 is a player
+        send_packet(c2, S_MATCH_FOUND, &match_data_p2, sizeof(uint8_t));
+    }
 
-    update_game_state(c1, c2, game);
+    update_game_state(game);
 }
 
-void update_game_state(Client *c1, Client *c2, Game *game) {
+void update_game_state(Game *game) {
     // Prepare packet for Player 1
     SGameState state1;
     memcpy(state1.board, game->board, BOARD_DATA_SIZE);
@@ -88,16 +101,23 @@ void update_game_state(Client *c1, Client *c2, Game *game) {
     } else {
         state1.turn_player_id = 0;
     }
-    send_packet(c1, S_GAME_STATE, &state1, sizeof(SGameState));
+    send_packet(game->player1, S_GAME_STATE, &state1, sizeof(SGameState));
 
-    // Prepare packet for Player 2
-    SGameState state2;
-    memcpy(state2.board, game->board, BOARD_DATA_SIZE);
-    // 0 = not your turn, 1 = your turn (MOVE phase), 2 = your turn (BLOCK phase)
-    if (game->current_turn == 2) {
-        state2.turn_player_id = (game->phase == PHASE_MOVE) ? 1 : 2;
-    } else {
-        state2.turn_player_id = 0;
+    if (game->game_mode == PLAYER_VS_PLAYER) 
+    {
+        // Prepare packet for Player 2 if not the AI
+        SGameState state2;
+        memcpy(state2.board, game->board, BOARD_DATA_SIZE);
+        // 0 = not your turn, 1 = your turn (MOVE phase), 2 = your turn (BLOCK phase)
+        if (game->current_turn == 2) {
+            state2.turn_player_id = (game->phase == PHASE_MOVE) ? 1 : 2;
+        } else {
+            state2.turn_player_id = 0;
+        }
+        send_packet(game->player2, S_GAME_STATE, &state2, sizeof(SGameState));
     }
-    send_packet(c2, S_GAME_STATE, &state2, sizeof(SGameState));
+    else if (game->game_mode == PLAYER_VS_AI)
+    {
+        // TODO: call Mr. Spock play function.
+    }
 }

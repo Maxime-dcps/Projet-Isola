@@ -281,8 +281,8 @@ void fsm_process_packet(Client *client, CommandID command_id, const uint8_t *pac
         case AUTHENTICATED:
             // Client is in the lobby, expecting C_PLAY_REQUEST or C_DISCONNECT
             if (command_id == C_PLAY_REQUEST) {
-                handle_play_request(client, packet_body);
                 printf("FSM INFO: User %s requesting match.\n", client->username);
+                handle_play_request(client, packet_body);
             } else if (command_id == C_GET_PLAYER_LIST) {
                 handle_player_list_request(client);
             } else if (command_id == C_CHANGE_PASSWORD) {
