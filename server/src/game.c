@@ -17,7 +17,7 @@ Game* create_game(Client *p1, Client *p2) {
 
     new_game->player1 = p1;
     new_game->player2 = p2;
-    new_game->current_turn = 1; //TODO: Random player starts. Carefull with order ! OK for AI to start ?
+    new_game->game_state.current_turn = 1; //TODO: Random player starts. Carefull with order ! OK for AI to start ?
 
     new_game->phase = PHASE_MOVE;
 
@@ -34,19 +34,19 @@ void init_game_board(Game *game) {
     //Reset board with zeros
     for (int i = 0; i < ROW; i++) {
         for (int j = 0; j < COLUMN; j++) {
-            game->board[i][j] = 0;
+            game->game_state.board[i][j] = 0;
         }
     }
 
     //Setting players pos
-    game->pos1.row = 2;
-    game->pos1.col = 0;
+    game->game_state.pos1.row = 2;
+    game->game_state.pos1.col = 0;
 
-    game->pos2.row = 3;
-    game->pos2.col = 7;
+    game->game_state.pos2.row = 3;
+    game->game_state.pos2.col = 7;
 
-    game->board[game->pos1.row][game->pos1.col] = 1;
-    game->board[game->pos2.row][game->pos2.col] = 2;
+    game->game_state.board[game->game_state.pos1.row][game->game_state.pos1.col] = 1;
+    game->game_state.board[game->game_state.pos2.row][game->game_state.pos2.col] = 2;
 }
 
 void remove_game(Game *game_to_remove) {
@@ -64,8 +64,8 @@ void remove_game(Game *game_to_remove) {
     }
 }
 
-int is_valid_move(Game *game, int player_id, int new_row, int new_col) {
-    PlayerPos current = (player_id == 1) ? game->pos1 : game->pos2;
+int is_valid_move(GameState *game_state, int player_id, int new_row, int new_col) {
+    PlayerPos current = (player_id == 1) ? game_state->pos1 : game_state->pos2;
 
     // Check boundaries
     if (new_row < 0 || new_row >= ROW || new_col < 0 || new_col >= COLUMN) return 0;
@@ -76,7 +76,7 @@ int is_valid_move(Game *game, int player_id, int new_row, int new_col) {
     if (dr > 1 || dc > 1 || (dr == 0 && dc == 0)) return 0;
 
     // Check if the tile is empty (0)
-    if (game->board[new_row][new_col] != 0) return 0;
+    if (game_state->board[new_row][new_col] != 0) return 0;
 
     return 1;
 }
@@ -88,7 +88,7 @@ void handle_move_request(Client *client, const uint8_t *body) {
     //Is the player turn
     int player_id = (client == game->player1) ? 1 : 2;
 
-    if (game->current_turn != player_id || game->phase != PHASE_MOVE) {
+    if (game->game_state.current_turn != player_id || game->phase != PHASE_MOVE) {
         return;
     }
 
@@ -101,14 +101,14 @@ void handle_move_request(Client *client, const uint8_t *body) {
     //CCC: Shift right by 2 to get the middle 3 bits, then mask
     int new_col = (data >> 2) & 0x07;
 
-    if (is_valid_move(game, player_id, new_row, new_col)) {
+    if (is_valid_move(&game->game_state, player_id, new_row, new_col)) {
         //Update positions on board
-        PlayerPos *old_pos = (player_id == 1) ? &game->pos1 : &game->pos2;
-        game->board[old_pos->row][old_pos->col] = 0; //Clear old tile
+        PlayerPos *old_pos = (player_id == 1) ? &game->game_state.pos1 : &game->game_state.pos2;
+        game->game_state.board[old_pos->row][old_pos->col] = 0; //Clear old tile
         //Update player position
         old_pos->row = new_row;
         old_pos->col = new_col;
-        game->board[new_row][new_col] = player_id; //Set new tile
+        game->game_state.board[new_row][new_col] = player_id; //Set new tile
 
         //Switch to BLOCK phase
         game->phase = PHASE_BLOCK;
@@ -126,7 +126,7 @@ void handle_block_request(Client *client, const uint8_t *body) {
     int player_id = (client == game->player1) ? 1 : 2;
 
     //Verify turn and phase
-    if (game->current_turn != player_id || game->phase != PHASE_BLOCK) {
+    if (game->game_state.current_turn != player_id || game->phase != PHASE_BLOCK) {
         return;
     }
 
@@ -138,19 +138,19 @@ void handle_block_request(Client *client, const uint8_t *body) {
     if((row == 2 && col == 0) || (row == 3 && col == 7)) return;
 
     // Validation: tile must be empty (0)
-    if (row < ROW && col < COLUMN && row >= 0 && col >= 0 && game->board[row][col] == 0) {
+    if (row < ROW && col < COLUMN && row >= 0 && col >= 0 && game->game_state.board[row][col] == 0) {
         //Set tile to destroyed
-        game->board[row][col] = 3;
+        game->game_state.board[row][col] = 3;
 
         //Switch player and phase
-        int next_player = (game->current_turn == 1) ? 2 : 1;
-        game->current_turn = next_player;
+        int next_player = (game->game_state.current_turn == 1) ? 2 : 1;
+        game->game_state.current_turn = next_player;
         game->phase = PHASE_MOVE;
 
-        printf("GAME: %s blocked tile [%d, %d]. Next turn: Player %d\n", client->username, row, col, game->current_turn);
+        printf("GAME: %s blocked tile [%d, %d]. Next turn: Player %d\n", client->username, row, col, game->game_state.current_turn);
 
         // Check if next player is blocked (victory condition)
-        if (check_player_blocked(game, next_player)) {
+        if (check_player_blocked(&game->game_state, next_player)) {
             Client *winner = (next_player == 1) ? game->player2 : game->player1;
             Client *loser = (next_player == 1) ? game->player1 : game->player2;
 
@@ -166,8 +166,8 @@ void handle_block_request(Client *client, const uint8_t *body) {
 }
 
 // Check if a player has at least one valid move
-int check_player_blocked(Game *game, int player_id) {
-    PlayerPos pos = (player_id == 1) ? game->pos1 : game->pos2;
+int check_player_blocked(GameState *game_state, int player_id) {
+    PlayerPos pos = (player_id == 1) ? game_state->pos1 : game_state->pos2;
 
     // Check all 8 adjacent tiles
     for (int dr = -1; dr <= 1; dr++) {
@@ -181,7 +181,7 @@ int check_player_blocked(Game *game, int player_id) {
             if (new_row < 0 || new_row >= ROW || new_col < 0 || new_col >= COLUMN) continue;
 
             // If any adjacent tile is empty (0), player can move
-            if (game->board[new_row][new_col] == 0) {
+            if (game_state->board[new_row][new_col] == 0) {
                 return 0; // Not blocked
             }
         }

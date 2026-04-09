@@ -5,6 +5,7 @@
 #include "server.h"
 #include "game.h"
 #include "network_core.h"
+#include "ai.h"
 
 //Simple pointer to the waiting player
 Client *waiting_client = NULL;
@@ -94,9 +95,9 @@ void start_match(Client *c1, Client *c2) {
 void update_game_state(Game *game) {
     // Prepare packet for Player 1
     SGameState state1;
-    memcpy(state1.board, game->board, BOARD_DATA_SIZE);
+    memcpy(state1.board, game->game_state.board, BOARD_DATA_SIZE);
     // 0 = not your turn, 1 = your turn (MOVE phase), 2 = your turn (BLOCK phase)
-    if (game->current_turn == 1) {
+    if (game->game_state.current_turn == 1) {
         state1.turn_player_id = (game->phase == PHASE_MOVE) ? 1 : 2;
     } else {
         state1.turn_player_id = 0;
@@ -107,9 +108,9 @@ void update_game_state(Game *game) {
     {
         // Prepare packet for Player 2 if not the AI
         SGameState state2;
-        memcpy(state2.board, game->board, BOARD_DATA_SIZE);
+        memcpy(state2.board, game->game_state.board, BOARD_DATA_SIZE);
         // 0 = not your turn, 1 = your turn (MOVE phase), 2 = your turn (BLOCK phase)
-        if (game->current_turn == 2) {
+        if (game->game_state.current_turn == 2) {
             state2.turn_player_id = (game->phase == PHASE_MOVE) ? 1 : 2;
         } else {
             state2.turn_player_id = 0;
@@ -119,5 +120,8 @@ void update_game_state(Game *game) {
     else if (game->game_mode == PLAYER_VS_AI)
     {
         // TODO: call Mr. Spock play function.
+        Move ai_moves[MAX_LEGAL_MOVES];
+        int count = get_legal_moves(&game->game_state, ai_moves);
+        printf("DEBUG: AI has %d legal moves available.\n", count);
     }
 }

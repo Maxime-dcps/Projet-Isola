@@ -13,6 +13,7 @@ typedef struct Client Client;
 
 #define ROW 6
 #define COLUMN 8
+#define MAX_LEGAL_MOVES 384 // 8 possible moves * 48 possible blocks 
 
 typedef struct {
     int row;
@@ -24,7 +25,7 @@ typedef enum {
     PHASE_BLOCK
 } GamePhase;
 
-typedef struct Game {
+typedef struct GameState{
     uint8_t board[ROW][COLUMN];
     /*
      * 0 -> free
@@ -32,11 +33,15 @@ typedef struct Game {
      * 2 -> player 3
      * 3 -> destroyed
      */
-    Client *player1;
-    Client *player2;
     PlayerPos pos1;
     PlayerPos pos2;
     int current_turn; //1 or 2
+} GameState;
+
+typedef struct Game {
+    GameState game_state;
+    Client *player1;
+    Client *player2;
     GamePhase phase;  //Added to track Move vs Block
     int game_mode;
     struct Game *next; //Pointer to the next game
@@ -47,11 +52,12 @@ extern Game *games_head; //Head of the linked list
 void init_game_board(Game *game);
 Game* create_game(Client *p1, Client *p2);
 void remove_game(Game *game);
+int is_valid_move(GameState *game_state, int player_id, int new_row, int new_col);
 void handle_move_request(Client *client, const uint8_t *body);
 void handle_block_request(Client *client, const uint8_t *body);
 
 // End game management
-int check_player_blocked(Game *game, int player_id);
+int check_player_blocked(GameState *game_state, int player_id);
 void end_game(Game *game, Client *winner, Client *loser, int is_forfeit);
 void handle_forfeit(Client *disconnecting_client);
 
