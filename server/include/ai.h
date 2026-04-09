@@ -18,5 +18,7 @@
     GameState clone_game_state(GameState *game_state);
     int get_legal_moves(GameState *game_state, Move* valid_moves);
     void apply_move(GameState *game_state, Move *move);
+    int evaluate_board(GameState *game_state, int ai_id);
+    int count_free_tiles(GameState *game_state, int player_id);
 
 #endif

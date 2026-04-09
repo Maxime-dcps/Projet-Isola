@@ -56,3 +56,36 @@ void apply_move(GameState *game_state, Move *move)
     // Switch turn
     game_state->current_turn = (game_state->current_turn == 1) ? 2 : 1;
 }
+
+int evaluate_board(GameState *game_state, int ai_id)
+{
+    int score = 0;
+    int human_id = (ai_id == 2) ? 1 : 2;
+
+    if(check_player_blocked(game_state, human_id)) return 1000;
+    if(check_player_blocked(game_state, ai_id)) return -1000;
+
+    int mobility = count_free_tiles(game_state, ai_id) - count_free_tiles(game_state, human_id);
+    score += mobility;
+
+    return score;
+}
+
+int count_free_tiles(GameState *game_state, int player_id)
+{
+    int count = 0;
+
+    PlayerPos playerPos = (player_id == 1) ? game_state->pos1 : game_state->pos2;
+
+    for (int dr = -1; dr <= 1; dr++)
+    {
+        for (int dc = -1; dc <= 1; dc++)
+        {
+            if (dr == 0 && dc == 0) continue;
+
+            if (tile_is_free(game_state->board, playerPos.row + dr, playerPos.col + dc)) count++;
+        }
+    }
+
+    return count;
+}

@@ -68,7 +68,7 @@ int is_valid_move(GameState *game_state, int player_id, int new_row, int new_col
     PlayerPos current = (player_id == 1) ? game_state->pos1 : game_state->pos2;
 
     // Check boundaries
-    if (new_row < 0 || new_row >= ROW || new_col < 0 || new_col >= COLUMN) return 0;
+    if (!is_in_boundaries(new_row, new_col)) return 0; 
 
     // Check if it's an adjacent tile
     int dr = abs(new_row - current.row); //Absolute value =>
@@ -165,6 +165,17 @@ void handle_block_request(Client *client, const uint8_t *body) {
     }
 }
 
+int is_in_boundaries(int row, int col) 
+{
+    return (row >= 0 && row < ROW && col >= 0 && col < COLUMN);
+
+}
+
+int tile_is_free(uint8_t board[ROW][COLUMN], int row, int col)
+{
+    return is_in_boundaries(row, col) && board[row][col] == 0;
+}
+
 // Check if a player has at least one valid move
 int check_player_blocked(GameState *game_state, int player_id) {
     PlayerPos pos = (player_id == 1) ? game_state->pos1 : game_state->pos2;
@@ -178,7 +189,7 @@ int check_player_blocked(GameState *game_state, int player_id) {
             int new_col = pos.col + dc;
 
             // Check boundaries
-            if (new_row < 0 || new_row >= ROW || new_col < 0 || new_col >= COLUMN) continue;
+            if (!is_in_boundaries(new_row, new_col)) continue;
 
             // If any adjacent tile is empty (0), player can move
             if (game_state->board[new_row][new_col] == 0) {

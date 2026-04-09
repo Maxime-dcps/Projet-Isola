@@ -55,6 +55,8 @@ void remove_game(Game *game);
 int is_valid_move(GameState *game_state, int player_id, int new_row, int new_col);
 void handle_move_request(Client *client, const uint8_t *body);
 void handle_block_request(Client *client, const uint8_t *body);
+int is_in_boundaries(int row, int col);
+int tile_is_free(uint8_t board[ROW][COLUMN], int row, int col);
 
 // End game management
 int check_player_blocked(GameState *game_state, int player_id);
