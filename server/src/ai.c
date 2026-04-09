@@ -41,17 +41,17 @@ int get_legal_moves(GameState *game_state, Move* valid_moves)
     return count;
 }
 
-void apply_move(GameState *game_state, Move *move)
+void apply_move(GameState *game_state, Move move)
 {
     // Move player
     Position *current_pos = (game_state->current_turn == 1) ? &game_state->pos1 : &game_state->pos2;
     game_state->board[current_pos->row][current_pos->col] = 0; // Clear old position
-    current_pos->row = move->dest_row;
-    current_pos->col = move->dest_col;
-    game_state->board[move->dest_row][move->dest_col] = game_state->current_turn; // Set new position
+    current_pos->row = move.dest_row;
+    current_pos->col = move.dest_col;
+    game_state->board[move.dest_row][move.dest_col] = game_state->current_turn; // Set new position
 
     // Block tile
-    game_state->board[move->block_row][move->block_col] = 3; // Mark as destroyed
+    game_state->board[move.block_row][move.block_col] = 3; // Mark as destroyed
 
     // Switch turn
     game_state->current_turn = (game_state->current_turn == 1) ? 2 : 1;
@@ -88,4 +88,36 @@ int count_free_tiles(GameState *game_state, int player_id)
     }
 
     return count;
+}
+
+int is_game_over(GameState *game_state)
+{
+    return (check_player_blocked(game_state, 1) || check_player_blocked(game_state, 2));
+}
+
+int minimax(GameState *game_state, int depth, int is_maximizing, int ai_id)
+{
+    // We reach a leaf
+    if(depth == 0 || is_game_over(game_state)) 
+        return evaluate_board(game_state, ai_id);
+    
+    Move valid_moves[MAX_LEGAL_MOVES];
+
+    int moves_count = get_legal_moves(game_state, valid_moves);
+    int best_val = is_maximizing ? -100000 : 100000;
+    int score;
+
+    for(int i = 0; i < moves_count; i++)
+    {
+        GameState child_state = clone_game_state(game_state);
+        apply_move(&child_state, valid_moves[i]);
+
+        // Create a new branch
+        score = minimax(&child_state, depth - 1, !is_maximizing, ai_id);
+
+        // Update best_val if this move is better
+        if(is_maximizing && score > best_val || !is_maximizing && score < best_val) best_val = score;
+    }
+
+    return best_val;
 }
