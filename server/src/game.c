@@ -65,7 +65,7 @@ void remove_game(Game *game_to_remove) {
 }
 
 int is_valid_move(GameState *game_state, int player_id, int new_row, int new_col) {
-    PlayerPos current = (player_id == 1) ? game_state->pos1 : game_state->pos2;
+    Position current = (player_id == 1) ? game_state->pos1 : game_state->pos2;
 
     // Check boundaries
     if (!is_in_boundaries(new_row, new_col)) return 0; 
@@ -103,7 +103,7 @@ void handle_move_request(Client *client, const uint8_t *body) {
 
     if (is_valid_move(&game->game_state, player_id, new_row, new_col)) {
         //Update positions on board
-        PlayerPos *old_pos = (player_id == 1) ? &game->game_state.pos1 : &game->game_state.pos2;
+        Position *old_pos = (player_id == 1) ? &game->game_state.pos1 : &game->game_state.pos2;
         game->game_state.board[old_pos->row][old_pos->col] = 0; //Clear old tile
         //Update player position
         old_pos->row = new_row;
@@ -178,7 +178,7 @@ int tile_is_free(uint8_t board[ROW][COLUMN], int row, int col)
 
 // Check if a player has at least one valid move
 int check_player_blocked(GameState *game_state, int player_id) {
-    PlayerPos pos = (player_id == 1) ? game_state->pos1 : game_state->pos2;
+    Position pos = (player_id == 1) ? game_state->pos1 : game_state->pos2;
 
     // Check all 8 adjacent tiles
     for (int dr = -1; dr <= 1; dr++) {

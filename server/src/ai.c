@@ -10,7 +10,7 @@ GameState clone_game_state(GameState *game_state)
 int get_legal_moves(GameState *game_state, Move* valid_moves)
 {
     int count = 0;
-    PlayerPos current = (game_state->current_turn == 1) ? game_state->pos1 : game_state->pos2;
+    Position current = (game_state->current_turn == 1) ? game_state->pos1 : game_state->pos2;
 
     for (int dr = -1; dr <= 1; dr++) {
         for (int dc = -1; dc <= 1; dc++) {
@@ -44,7 +44,7 @@ int get_legal_moves(GameState *game_state, Move* valid_moves)
 void apply_move(GameState *game_state, Move *move)
 {
     // Move player
-    PlayerPos *current_pos = (game_state->current_turn == 1) ? &game_state->pos1 : &game_state->pos2;
+    Position *current_pos = (game_state->current_turn == 1) ? &game_state->pos1 : &game_state->pos2;
     game_state->board[current_pos->row][current_pos->col] = 0; // Clear old position
     current_pos->row = move->dest_row;
     current_pos->col = move->dest_col;
@@ -75,7 +75,7 @@ int count_free_tiles(GameState *game_state, int player_id)
 {
     int count = 0;
 
-    PlayerPos playerPos = (player_id == 1) ? game_state->pos1 : game_state->pos2;
+    Position playerPos = (player_id == 1) ? game_state->pos1 : game_state->pos2;
 
     for (int dr = -1; dr <= 1; dr++)
     {

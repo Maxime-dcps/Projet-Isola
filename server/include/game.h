@@ -18,7 +18,7 @@ typedef struct Client Client;
 typedef struct {
     int row;
     int col;
-} PlayerPos;
+} Position;
 
 typedef enum {
     PHASE_MOVE,
@@ -33,8 +33,8 @@ typedef struct GameState{
      * 2 -> player 3
      * 3 -> destroyed
      */
-    PlayerPos pos1;
-    PlayerPos pos2;
+    Position pos1;
+    Position pos2;
     int current_turn; //1 or 2
 } GameState;
 
