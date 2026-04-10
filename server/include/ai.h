@@ -23,7 +23,8 @@
     int evaluate_board(GameState *game_state, int ai_id);
     int count_free_tiles(GameState *game_state, int player_id);
     int is_game_over(GameState *game_state);
-    int max_value(GameState *game_state, int depth, int ai_id);
-    int min_value(GameState *game_state, int depth, int ai_id);
+    int max_value(GameState *game_state, int depth, int ai_id, int alpha, int beta);
+    int min_value(GameState *game_state, int depth, int ai_id, int alpha, int beta);
+    Move get_best_move(GameState *game_state, int depth, int ai_id);
 
 #endif

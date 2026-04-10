@@ -119,9 +119,16 @@ void update_game_state(Game *game) {
     }
     else if (game->game_mode == PLAYER_VS_AI)
     {
-        // TODO: call Mr. Spock play function.
-        Move ai_moves[MAX_LEGAL_MOVES];
-        int count = get_legal_moves(&game->game_state, ai_moves);
-        printf("DEBUG: AI has %d legal moves available.\n", count);
+        // If it's AI's turn
+        if(game->game_state.current_turn == 2) 
+        {
+            // TODO: call Mr. Spock play function.
+            Move ai_moves[MAX_LEGAL_MOVES];
+            int count = get_legal_moves(&game->game_state, ai_moves);
+            printf("DEBUG: AI has %d legal moves available.\n", count);
+            // Reduce AI depth to speed up the process or to lower difficulty
+            Move best_move = get_best_move(&game->game_state, DEFAULT_AI_DEPTH, 2); 
+            printf("DEBUG: AI chose move - Dest: [%d, %d], Block: [%d, %d]\n", best_move.dest_row, best_move.dest_col, best_move.block_row, best_move.block_col);
+        }
     }
 }

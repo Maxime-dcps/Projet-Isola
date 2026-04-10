@@ -95,7 +95,7 @@ int is_game_over(GameState *game_state)
     return (check_player_blocked(game_state, 1) || check_player_blocked(game_state, 2));
 }
 
-int max_value(GameState *game_state, int depth, int ai_id)
+int max_value(GameState *game_state, int depth, int ai_id, int alpha, int beta)
 {
     // We reach a leaf
     if(depth == 0 || is_game_over(game_state)) 
@@ -113,16 +113,18 @@ int max_value(GameState *game_state, int depth, int ai_id)
         apply_move(&child_state, valid_moves[i]);
 
         // Create a new branch
-        score = min_value(&child_state, depth - 1, ai_id);
+        score = min_value(&child_state, depth - 1, ai_id, alpha, beta);
 
         // Update best_val if this move is better
         if(score > best_val) best_val = score;
+        if(best_val > alpha) alpha = best_val;
+        if(alpha >= beta) break; // Prune branch
     }
 
     return best_val;
 }
 
-int min_value(GameState *game_state, int depth, int ai_id)
+int min_value(GameState *game_state, int depth, int ai_id, int alpha, int beta)
 {
     // We reach a leaf
     if(depth == 0 || is_game_over(game_state)) 
@@ -140,11 +142,43 @@ int min_value(GameState *game_state, int depth, int ai_id)
         apply_move(&child_state, valid_moves[i]);
 
         // Create a new branch
-        score = max_value(&child_state, depth - 1, ai_id);
+        score = max_value(&child_state, depth - 1, ai_id, alpha, beta);
 
         // Update best_val if this move is better
         if(score < best_val) best_val = score;
+        if(best_val < beta) beta = best_val; 
+        if(alpha >= beta) break; // Prune branch
     }
 
     return best_val;
+}
+
+Move get_best_move(GameState *game_state, int depth, int ai_id)
+{
+    Move best_move, valid_moves[MAX_LEGAL_MOVES];
+
+    int moves_count = get_legal_moves(game_state, valid_moves);
+    int best_val = -100000, alpha = -100000, beta = 100000;
+    int score;
+
+    for(int i = 0; i < moves_count; i++)
+    {
+        GameState child_state = clone_game_state(game_state);
+        apply_move(&child_state, valid_moves[i]);
+
+        // Evaluate move using Minimax with alpha-beta pruning
+        score = min_value(&child_state, depth - 1, ai_id, alpha, beta);
+
+        // Update best_val and best move if this move is better
+        if(score > best_val)
+        {
+            best_move = valid_moves[i];
+            best_val = score;
+        }
+
+        // Update alpha for pruning
+        if(best_val > alpha) alpha = best_val;
+    }
+
+    return best_move;
 }
