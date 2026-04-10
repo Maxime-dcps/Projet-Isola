@@ -95,7 +95,7 @@ int is_game_over(GameState *game_state)
     return (check_player_blocked(game_state, 1) || check_player_blocked(game_state, 2));
 }
 
-int minimax(GameState *game_state, int depth, int is_maximizing, int ai_id)
+int max_value(GameState *game_state, int depth, int ai_id)
 {
     // We reach a leaf
     if(depth == 0 || is_game_over(game_state)) 
@@ -104,7 +104,7 @@ int minimax(GameState *game_state, int depth, int is_maximizing, int ai_id)
     Move valid_moves[MAX_LEGAL_MOVES];
 
     int moves_count = get_legal_moves(game_state, valid_moves);
-    int best_val = is_maximizing ? -100000 : 100000;
+    int best_val = -100000;
     int score;
 
     for(int i = 0; i < moves_count; i++)
@@ -113,10 +113,37 @@ int minimax(GameState *game_state, int depth, int is_maximizing, int ai_id)
         apply_move(&child_state, valid_moves[i]);
 
         // Create a new branch
-        score = minimax(&child_state, depth - 1, !is_maximizing, ai_id);
+        score = min_value(&child_state, depth - 1, ai_id);
 
         // Update best_val if this move is better
-        if(is_maximizing && score > best_val || !is_maximizing && score < best_val) best_val = score;
+        if(score > best_val) best_val = score;
+    }
+
+    return best_val;
+}
+
+int min_value(GameState *game_state, int depth, int ai_id)
+{
+    // We reach a leaf
+    if(depth == 0 || is_game_over(game_state)) 
+        return evaluate_board(game_state, ai_id);
+    
+    Move valid_moves[MAX_LEGAL_MOVES];
+
+    int moves_count = get_legal_moves(game_state, valid_moves);
+    int best_val = 100000;
+    int score;
+
+    for(int i = 0; i < moves_count; i++)
+    {
+        GameState child_state = clone_game_state(game_state);
+        apply_move(&child_state, valid_moves[i]);
+
+        // Create a new branch
+        score = max_value(&child_state, depth - 1, ai_id);
+
+        // Update best_val if this move is better
+        if(score < best_val) best_val = score;
     }
 
     return best_val;
