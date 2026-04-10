@@ -149,19 +149,8 @@ void handle_block_request(Client *client, const uint8_t *body) {
 
         printf("GAME: %s blocked tile [%d, %d]. Next turn: Player %d\n", client->username, row, col, game->game_state.current_turn);
 
-        // Check if next player is blocked (victory condition)
-        if (check_player_blocked(&game->game_state, next_player)) {
-            Client *winner = (next_player == 1) ? game->player2 : game->player1;
-            Client *loser = (next_player == 1) ? game->player1 : game->player2;
-
-            const char *winner_name = (winner != NULL) ? winner->username : AI_NAME;
-            const char *loser_name  = (loser  != NULL) ? loser->username  : AI_NAME;
-
-            printf("GAME: Player %s is blocked! %s wins!\n", loser_name, winner_name);
-            end_game(game, winner, loser, 0);
-        } else {
-            update_game_state(game); // FIXME: need to be ai alignated
-        }
+        // Check if any player is blocked 
+        finalize_turn(game);
     }
 }
 
@@ -294,4 +283,32 @@ void handle_forfeit(Client *disconnecting_client) {
 
     // Remove game from list and free memory
     remove_game(game);
+}
+
+void finalize_turn(Game *game) {
+    if (check_player_blocked(&game->game_state, 1)) {
+        Client *winner = game->player2;
+        Client *loser = game->player1;
+
+        const char *winner_name = (winner != NULL) ? winner->username : AI_NAME;
+        const char *loser_name  = (loser  != NULL) ? loser->username  : AI_NAME;
+
+        printf("GAME: %s is blocked! %s wins!\n", loser_name, winner_name);
+        end_game(game, winner, loser, 0);
+        return;
+    }
+
+    if (check_player_blocked(&game->game_state, 2)) {
+        Client *winner = game->player1;
+        Client *loser = game->player2;
+        const char *winner_name = (winner != NULL) ? winner->username : AI_NAME;
+        const char *loser_name  = (loser  != NULL) ? loser->username  : AI_NAME;
+
+        printf("GAME: %s is blocked! %s wins!\n", loser_name, winner_name);
+        end_game(game, winner, loser, 0);
+        return;
+    }
+
+    // If no winner, just update game state for next turn
+    update_game_state(game);
 }

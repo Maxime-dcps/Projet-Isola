@@ -63,5 +63,6 @@ int tile_is_free(uint8_t board[ROW][COLUMN], int row, int col);
 int check_player_blocked(GameState *game_state, int player_id);
 void end_game(Game *game, Client *winner, Client *loser, int is_forfeit);
 void handle_forfeit(Client *disconnecting_client);
+void finalize_turn(Game *game);
 
 #endif

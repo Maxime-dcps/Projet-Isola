@@ -129,6 +129,15 @@ void update_game_state(Game *game) {
             // Reduce AI depth to speed up the process or to lower difficulty
             Move best_move = get_best_move(&game->game_state, DEFAULT_AI_DEPTH, 2); 
             printf("DEBUG: AI chose move - Dest: [%d, %d], Block: [%d, %d]\n", best_move.dest_row, best_move.dest_col, best_move.block_row, best_move.block_col);
+
+            apply_move(&game->game_state, best_move);
+
+            //Switch player and phase
+            game->game_state.current_turn = 1;
+            game->phase = PHASE_MOVE;
+
+            // Check if any player is blocked after AI move
+            finalize_turn(game);
         }
     }
 }
