@@ -57,13 +57,13 @@ void apply_move(GameState *game_state, Move move)
     game_state->current_turn = (game_state->current_turn == 1) ? 2 : 1;
 }
 
-int evaluate_board(GameState *game_state, int ai_id)
+int evaluate_board(GameState *game_state, int depth, int ai_id)
 {
     int score = 0;
     int human_id = (ai_id == 2) ? 1 : 2;
 
-    if(check_player_blocked(game_state, human_id)) return 1000;
-    if(check_player_blocked(game_state, ai_id)) return -1000;
+    if(check_player_blocked(game_state, human_id)) return 1000 + depth;
+    if(check_player_blocked(game_state, ai_id)) return -1000 - depth;
 
     int mobility = count_free_tiles(game_state, ai_id) - count_free_tiles(game_state, human_id);
     score += mobility;
@@ -95,12 +95,17 @@ int is_game_over(GameState *game_state)
     return (check_player_blocked(game_state, 1) || check_player_blocked(game_state, 2));
 }
 
-int max_value(GameState *game_state, int depth, int ai_id, int alpha, int beta)
+int max_value(GameState *game_state, int depth, AISearchContext *ctx, int alpha, int beta)
 {
     // We reach a leaf
     if(depth == 0 || is_game_over(game_state)) 
-        return evaluate_board(game_state, ai_id);
+        return evaluate_board(game_state, depth, ctx->ai_id);
     
+    if (is_time_up(ctx)) {
+        ctx->time_expired = 1;
+        return evaluate_board(game_state, depth, ctx->ai_id);
+    }
+
     Move valid_moves[MAX_LEGAL_MOVES];
 
     int moves_count = get_legal_moves(game_state, valid_moves);
@@ -113,7 +118,9 @@ int max_value(GameState *game_state, int depth, int ai_id, int alpha, int beta)
         apply_move(&child_state, valid_moves[i]);
 
         // Create a new branch
-        score = min_value(&child_state, depth - 1, ai_id, alpha, beta);
+        score = min_value(&child_state, depth - 1, ctx, alpha, beta);
+
+        if(ctx->time_expired) break;
 
         // Update best_val if this move is better
         if(score > best_val) best_val = score;
@@ -124,11 +131,16 @@ int max_value(GameState *game_state, int depth, int ai_id, int alpha, int beta)
     return best_val;
 }
 
-int min_value(GameState *game_state, int depth, int ai_id, int alpha, int beta)
+int min_value(GameState *game_state, int depth, AISearchContext *ctx, int alpha, int beta)
 {
     // We reach a leaf
     if(depth == 0 || is_game_over(game_state)) 
-        return evaluate_board(game_state, ai_id);
+        return evaluate_board(game_state, depth, ctx->ai_id);
+
+    if (is_time_up(ctx)) {
+        ctx->time_expired = 1;
+        return evaluate_board(game_state, depth, ctx->ai_id);
+    }
     
     Move valid_moves[MAX_LEGAL_MOVES];
 
@@ -142,7 +154,9 @@ int min_value(GameState *game_state, int depth, int ai_id, int alpha, int beta)
         apply_move(&child_state, valid_moves[i]);
 
         // Create a new branch
-        score = max_value(&child_state, depth - 1, ai_id, alpha, beta);
+        score = max_value(&child_state, depth - 1, ctx, alpha, beta);
+
+        if(ctx->time_expired) break;
 
         // Update best_val if this move is better
         if(score < best_val) best_val = score;
@@ -153,13 +167,12 @@ int min_value(GameState *game_state, int depth, int ai_id, int alpha, int beta)
     return best_val;
 }
 
-Move get_best_move(GameState *game_state, int depth, int ai_id)
+Move search_at_depth(GameState *game_state, int depth, AISearchContext *ctx, int *final_val)
 {
     Move best_move, valid_moves[MAX_LEGAL_MOVES];
 
     int moves_count = get_legal_moves(game_state, valid_moves);
-    int best_val = -100000, alpha = -100000, beta = 100000;
-    int score;
+    int score, best_val = -100000, alpha = -100000, beta = 100000;
 
     for(int i = 0; i < moves_count; i++)
     {
@@ -167,7 +180,9 @@ Move get_best_move(GameState *game_state, int depth, int ai_id)
         apply_move(&child_state, valid_moves[i]);
 
         // Evaluate move using Minimax with alpha-beta pruning
-        score = min_value(&child_state, depth - 1, ai_id, alpha, beta);
+        score = min_value(&child_state, depth - 1, ctx, alpha, beta);
+
+        if(ctx->time_expired) break;
 
         // Update best_val and best move if this move is better
         if(score > best_val)
@@ -180,5 +195,60 @@ Move get_best_move(GameState *game_state, int depth, int ai_id)
         if(best_val > alpha) alpha = best_val;
     }
 
+    *final_val = best_val;
     return best_move;
+}
+
+Move get_best_move(GameState *game_state, int max_depth, int ai_id)
+{
+    // Initialize search context
+    AISearchContext ctx;
+    ctx.ai_id = ai_id;
+    ctx.time_limit_ms = TIME_LIMIT_MS;
+    ctx.time_expired = 0;
+    clock_gettime(CLOCK_MONOTONIC, &ctx.start_time);
+    
+    Move valid_moves[MAX_LEGAL_MOVES];
+    get_legal_moves(game_state, valid_moves);
+    Move best_move_overall = valid_moves[0];
+
+    int best_val;
+    
+    for (int depth = 1; depth <= max_depth; depth++)
+    {
+        Move candidate = search_at_depth(game_state, depth, &ctx, &best_val);
+        
+        if (!ctx.time_expired) {
+            // Update if we completed the search within the time limit
+            best_move_overall = candidate;
+            printf("AI: depth %d complete\n", depth);
+        } else {
+            // we keep the best move from the last completed depth
+            printf("AI: timeout at depth %d, using depth %d\n", depth, depth - 1);
+            break;
+        }
+
+        if(best_val >= 1000) {
+            // Found a winning move, no need to search deeper
+            printf("AI: found winning move at depth %d\n", depth);
+            break;
+        }
+    }
+
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    printf("AI: selected move after searching up to depth %d in %ld seconds\n", max_depth, get_duration(ctx.start_time, now));
+
+    return best_move_overall;
+}
+
+int is_time_up(AISearchContext *ctx) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    long elapsed_ms = get_duration(ctx->start_time, now);
+    return elapsed_ms >= ctx->time_limit_ms;
+}
+
+long get_duration(struct timespec start, struct timespec end) {
+    return (end.tv_sec - start.tv_sec) * 1000 + (end.tv_nsec - start.tv_nsec) / 1000000;
 }

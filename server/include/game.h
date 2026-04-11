@@ -14,7 +14,7 @@ typedef struct Client Client;
 #define ROW 6
 #define COLUMN 8
 #define MAX_LEGAL_MOVES 384 // 8 possible moves * 48 possible blocks 
-#define DEFAULT_AI_DEPTH 4
+#define DEFAULT_AI_DEPTH 40
 
 typedef struct {
     int row;
